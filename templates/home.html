@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Searcher</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container">
+        <div class="form-group">
+            <label>Text query:</label>
+            <input type="text" class="form-control" id="queryInput">
+        </div>
+        <button id="searchClipButton" class="btn btn-primary">Search Clip</button>
+        <div>
+            Last selected image: <span id="lastSelected"></span>
+        </div>
+        <button id="sendResultButton" class="btn btn-primary">Send selected index</button>
+    </div>
+</nav>
+<div class="container-fluid">
+    <div class="row" id="imageGrid">
+        {% for filename in filenames %}
+            <div class="col-2">
+                <img src="{{ filename }}" class="img-thumbnail" onclick="selectImage('{{ filename }}')" style="width: 100%; height: auto;">
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+    var selectedImage = '';
+
+    function selectImage(filename) {
+        selectedImage = filename;
+        document.getElementById('lastSelected').innerText = filename.slice(-9);
+    }
+
+    document.getElementById('searchClipButton').onclick = function() {
+        // TODO: Implement the clip search functionality here, possibly using AJAX to call the 'search_clip' view
+    };
+
+    document.getElementById('sendResultButton').onclick = function() {
+        if (selectedImage) {
+            $.get('/send_result/' + selectedImage + '/', function(data) {
+                console.log(data.result);
+            });
+        }
+    };
+</script>
+</body>
+</html>
