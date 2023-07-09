@@ -10,7 +10,7 @@ def home(request):
 
     filenames = []
     for i, fn in enumerate(sorted(os.listdir(dataset_path))):
-        if i >= 1000:  # only take the first 100 files
+        if i >= 50:  # only take the first 100 files
             break
         filename = os.path.join(settings.MEDIA_URL, 'Images', fn)
         filenames.append(filename)
