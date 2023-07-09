@@ -3,36 +3,60 @@
 <head>
     <title>Searcher</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #343a40;
+            color: white;
+        }
+        .navbar {
+            background-color: #343a40;
+        }
+        .highlighted {
+            border: 3px solid #dc3545; /* bootstrap red border */
+        }
+    </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container">
-        <div class="form-group">
-            <label>Text query:</label>
-            <input type="text" class="form-control" id="queryInput">
-        </div>
-        <button id="searchClipButton" class="btn btn-primary">Search Clip</button>
-        <div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+        <div class="mr-2">
             Last selected image: <span id="lastSelected"></span>
+{#            TODO When selecting image, see also CSV file information about it when hovering over. #}
+            <button id="findSimilarButton" class="btn btn-primary ml-2">Find Similar Images</button>
         </div>
-        <button id="sendResultButton" class="btn btn-primary">Send selected index</button>
+
+        <div class="navbar-nav mx-auto">
+            <div>
+                <button id="sendResultButton" class="btn btn-danger">Send selected Image</button>
+            </div>
+        </div>
+
+        <form class="form-inline my-2 my-lg-0">
+            <input id="queryInput" class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+            <button id="searchClipButton" class="btn btn-success my-2 my-sm-0" type="submit">Search</button>
+        </form>
     </div>
 </nav>
 <div class="container-fluid">
     <div class="row" id="imageGrid">
         {% for filename in filenames %}
             <div class="col-2">
-                <img src="{{ filename }}" class="img-thumbnail" onclick="selectImage('{{ filename }}')" style="width: 100%; height: auto;">
+                <img src="{{ filename }}" id="{{ filename }}" class="img-thumbnail" onclick="selectImage('{{ filename }}')" style="width: 100%; height: auto;" alt="Image">
             </div>
         {% endfor %}
     </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
+
     var selectedImage = '';
 
     function selectImage(filename) {
+        if (selectedImage) {
+            document.getElementById(selectedImage).classList.remove('highlighted');
+        }
         selectedImage = filename;
+        document.getElementById(filename).classList.add('highlighted');
         document.getElementById('lastSelected').innerText = filename.slice(-9);
     }
 
@@ -44,6 +68,15 @@
         if (selectedImage) {
             $.get('/send_result/' + selectedImage + '/', function(data) {
                 console.log(data.result);
+            });
+        }
+    };
+    document.getElementById('findSimilarButton').onclick = function() {
+        if (selectedImage) {
+            $.get('/find_similar/' + selectedImage + '/', function(data) {
+                data.similar_images = undefined;
+                console.log(data.similar_images);
+                // Here, you might want to do something with the similar images, like displaying them on the page.
             });
         }
     };

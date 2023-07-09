@@ -24,5 +24,12 @@ def search_clip(request):
 def send_result(request, image_name):
     key_i = (image_name[-9:])[:5]
     my_obj = {'team': "name", 'item': key_i}
-    response = requests.get(url="https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php", params=my_obj)
-    return JsonResponse({'result': response.text})
+    # response = requests.get(url="https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php", params=my_obj)
+    # return JsonResponse({'result': response.text})
+    # TODO Reactivate sending to endpoint.
+    return 0
+
+def find_similar(request, image_id, similar_images=None):
+    # Implement functionality to find similar images here.
+    # You'll need to return some kind of response, perhaps a list of similar image filenames.
+    return JsonResponse({'similar_images': similar_images})
