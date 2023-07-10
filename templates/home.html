@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Searcher</title>
+    <title>Video Retrieval</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -23,9 +23,11 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <div class="mr-2">
+            <a href="/" class="btn btn-primary ml-2 mr-2">Home</a>
             Last selected image: <span id="lastSelected"></span>
 {#            TODO When selecting image, see also CSV file information about it when hovering over. #}
-            <button id="findSimilarButton" class="btn btn-primary ml-2">Find Similar Images</button>
+            <button id="findSimilarHistogramButton" class="btn btn-primary ml-2">Find Similar Images (Histogram)</button>
+            <button id="findSimilarCLIPButton" class="btn btn-primary ml-2">Find Similar Images (CLIP)</button>
         </div>
 
         <div class="navbar-nav mx-auto">
@@ -34,9 +36,10 @@
             </div>
         </div>
 
-        <form class="form-inline my-2 my-lg-0">
-            <input id="queryInput" class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
-            <button id="searchClipButton" class="btn btn-success my-2 my-sm-0" type="submit">Search</button>
+        <form method="post" action="{% url 'search_clip' %}" class="form-inline my-2 my-lg-0">
+            {% csrf_token %}
+            <input name="query" id="searchClipInput" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search">
+            <button type="submit" id="searchClipButton" class="btn btn-success my-2 my-sm-0">Search</button>
         </form>
     </div>
 </nav>
@@ -57,7 +60,7 @@
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
 
-    var selectedImage = '';
+    let selectedImage = '';
 
     function selectImage(filename) {
         if (selectedImage) {
@@ -69,7 +72,17 @@
     }
 
     document.getElementById('searchClipButton').onclick = function() {
-        // TODO: Implement the clip search functionality here, possibly using AJAX to call the 'search_clip' view
+        console.log("searchClipButton Triggered.");
+        const input = document.getElementById('searchClipInput');
+        if (input.value === '') {
+            alert('Please enter some text to search.');
+            return false;  // This will prevent the form from being submitted
+        } else {
+            console.log("Search clip triggered!")
+            $.get('/search_clip/', function(data) {
+                console.log(data.result);
+            });
+        }
     };
 
     document.getElementById('sendResultButton').onclick = function() {
