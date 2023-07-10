@@ -58,16 +58,18 @@ def search_clip(request, shown=None, image_size=None):
     # Counter for number of images processed
     counter = 0
 
+    filenames = []
     for image_file in os.listdir(folder_path):
         # Full path to the image file
         image_path = os.path.join(folder_path, image_file)
+        filenames.append(image_path)
 
         # Skip if not a file or not an image
         print(image_path)
         if not os.path.isfile(image_path) or not (image_file.endswith(".png") or image_file.endswith(".jpg")):
             continue
 
-        image_path = os.path.join(settings.MEDIA_URL, 'Images')
+        # image_path = os.path.join(settings.MEDIA_URL, 'Images')
         image = preprocess(Image.open(image_path)).unsqueeze(0).to(device)
 
         # Calculate features
@@ -81,7 +83,7 @@ def search_clip(request, shown=None, image_size=None):
 
         print("Image: ", counter)
         counter += 1
-        if counter >= 10:  # Stop processing after 100 images
+        if counter >= 100:  # Stop processing after 100 images
             break
 
     # Sort the results by similarity in descending order
@@ -90,6 +92,12 @@ def search_clip(request, shown=None, image_size=None):
     # Print the results
     for image_file, similarity in similarities:
         print(f"Image: {image_file}, Similarity: {similarity}")
+        # TODO Sort by similarity and then show in UI, have to get Image path from image file.
+        # TODO Overlay similarity over image.
+
+    context = {'filenames': filenames}
+    print(filenames)
+    return render(request, 'home.html', context)
 
 def send_result(request, image_name):
     key_i = (image_name[-9:])[:5]
