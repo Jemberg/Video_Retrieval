@@ -13,31 +13,20 @@ dataset_path = os.path.join(settings.MEDIA_ROOT, 'Images')
 
 def home(request):
     filenames = []
+    emptySimilarity = []
     for i, fn in enumerate(sorted(os.listdir(dataset_path))):
         if i >= 50:  # only take the first 100 files
             break
         filename = os.path.join(settings.MEDIA_URL, 'Images', fn)
         print(filename)
         filenames.append(filename)
-    context = {'filenames': filenames}
+        emptySimilarity.append(" ")
+
+    context = {'filenames': zip(filenames, emptySimilarity)}
     return render(request, 'home.html', context)
 
 def search_clip(request, shown=None, image_size=None):
     filenames = []
-    print("Search_clip was called!")
-
-    # if request.method == 'POST':
-    #     query = request.POST.get('query', '') # Defaults to empty value if no query is detected to avoid exception.
-    #     print("query value: ", query)
-
-    # for i, fn in enumerate(sorted(os.listdir(dataset_path))):
-    #     if i >= 5:  # only take the first 100 files
-    #         break
-    #     filename = os.path.join(settings.MEDIA_URL, 'Images', fn)
-    #     filenames.append(filename)
-    # context = {'filenames': filenames}
-    # print(filenames)
-    # return render(request, 'home.html', context)
 
     # Load the model
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -49,8 +38,10 @@ def search_clip(request, shown=None, image_size=None):
     print("query value: ", query)
     text = clip.tokenize([query]).to(device)
 
-    # Prepare a list to store similarities
+    # Prepare a list to store similarities as well as images.
     similarities = []
+    similarityExcl = []
+    # Exclusively only stores the numbers for the similarities
 
     # Folder containing the images
     folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
@@ -62,7 +53,6 @@ def search_clip(request, shown=None, image_size=None):
     for image_file in os.listdir(folder_path):
         # Full path to the image file
         image_path = os.path.join(folder_path, image_file)
-        filenames.append(image_path)
 
         # Skip if not a file or not an image
         print(image_path)
@@ -79,24 +69,25 @@ def search_clip(request, shown=None, image_size=None):
 
         # Compute the similarity
         similarity = cosine_similarity(text_features, image_features)[0][0]
-        similarities.append((image_file, similarity))
+        similarities.append((image_path, similarity))
 
         print("Image: ", counter)
         counter += 1
-        if counter >= 100:  # Stop processing after 100 images
+        if counter >= 1000:  # Stop processing after 100 images
             break
 
     # Sort the results by similarity in descending order
     similarities.sort(key=lambda x: x[1], reverse=True)
+    print(similarities)
 
     # Print the results
-    for image_file, similarity in similarities:
-        print(f"Image: {image_file}, Similarity: {similarity}")
-        # TODO Sort by similarity and then show in UI, have to get Image path from image file.
-        # TODO Overlay similarity over image.
+    for image_path, similarity in similarities:
+        print(f"Image: {image_path}, Similarity: {similarity}")
+        filenames.append(image_path)
+        similarityExcl.append("{:.3f}".format(similarity * 100) + "%")
 
-    context = {'filenames': filenames}
-    print(filenames)
+    filename_similarity_zip = zip(filenames, similarityExcl)
+    context = {'filenames': filename_similarity_zip}
     return render(request, 'home.html', context)
 
 def send_result(request, image_name):

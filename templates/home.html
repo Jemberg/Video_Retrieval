@@ -12,9 +12,28 @@
             background-color: #343a40;
         }
         .highlighted {
-            border: 3px solid #dc3545; /* bootstrap red border */
+            box-shadow: 0 0 0 3px #dc3545; /* bootstrap red border */
         }
         footer {
+            color: white;
+        }
+        .image-container {
+            position: relative;
+            text-align: center;
+            color: white;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: auto;
+        }
+
+        .overlay-text {
+            position: absolute;
+            top: 95%;
+            left: 50%;
+            transform: translate(-50%, -95%);
+            font-size: 20px; /* Adjust as needed */
             color: white;
         }
     </style>
@@ -38,16 +57,20 @@
 
         <form method="post" action="{% url 'search_clip' %}" class="form-inline my-2 my-lg-0">
             {% csrf_token %}
-            <input name="query" id="searchClipInput" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search">
-            <button type="submit" id="searchClipButton" class="btn btn-success my-2 my-sm-0">Search</button>
+            <input name="query" id="searchClipInput" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="CLIP Text Search">
+            <button type="submit" id="searchClipButton" class="btn btn-success my-2 my-sm-0">Text Search (CLIP)</button>
+            <button type="submit" id="combinedClipButton" class="btn btn-success ml-2 my-2 my-sm-0">Combined Search (CLIP)</button>
         </form>
     </div>
 </nav>
 <div class="container-fluid">
     <div class="row" id="imageGrid">
-        {% for filename in filenames %}
-            <div class="col-2">
-                <img src="{{ filename }}" id="{{ filename }}" class="img-thumbnail" onclick="selectImage('{{ filename }}')" style="width: 100%; height: auto;" alt="Image">
+        {% for filename, similarity in filenames %}
+            <div class="col-2 image-container">
+                <img src="{{ filename }}" id="{{ filename }}" class="rounded mx-auto d-block my-1" onclick="selectImage('{{ filename }}')" alt="Image">
+                {% if similarity %}
+                    <div class="overlay-text">{{ similarity }}</div>
+                {% endif %}
             </div>
         {% endfor %}
     </div>
