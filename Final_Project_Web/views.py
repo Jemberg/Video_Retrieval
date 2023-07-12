@@ -1,3 +1,5 @@
+import math
+
 from django.http import JsonResponse
 from django.conf import settings
 from django.shortcuts import render
@@ -6,8 +8,6 @@ import torch
 import clip
 from PIL import Image
 from sklearn.metrics.pairwise import cosine_similarity
-
-import os
 import cv2
 import numpy as np
 from scipy.spatial import distance
@@ -219,3 +219,36 @@ def combined_clip(request):
     ranked_indices = torch.argsort(similarities, descending=True)
 
     # Now `ranked_indices[0]` is the index of the most similar image, `ranked_indices[1]` is the second most similar, and so on
+
+def L2S(x1, y1, x2, y2):
+    return (x1 - x2) ** 2 + (y1 - y2) ** 2
+
+def UpdateScores(X, Y, scores, display, likeID, alpha):
+    for i in range(0, X.size):
+        PF = math.exp(-L2S(X[likeID], Y[likeID], X[i], Y[i]) / alpha)
+        NF = 0
+        for j in display:
+            if j != likeID:
+                NF += math.exp(-L2S(X[j], Y[j], X[i], Y[i]) / alpha)
+        scores[i] = scores[i] * PF / NF
+
+def DrawDataANdScores(X, Y, scores, display, likeID):
+    colors = []
+    for i in range(0, X.size):
+        c = int(scores[i] * 255)
+        if i == likeID: colors.append("red")
+        elif i in display: colors.append("blue")
+        else: colors.append('#%02x%02x%02x' % (0, 255 - c, 0))
+
+# TODO Implement bayesian feedback loop.
+def feedback_loop(request):
+    print("Feedback update called.")
+    positive_image = request.POST.get('lastSelected', "")
+    print("Positive example: ", positive_image)
+
+    # TODO Precompute all the distances with matrix multiplication, is 100x faster than iterating.
+    # TODO Change positive_image to correct solution later.
+
+    # TODO Negative examples can be 20-30 images, does not have to be all of the rest of the images.
+    context = {'filenames': positive_image}
+    return render(request, 'home.html', context)

@@ -56,6 +56,11 @@
             <button id="findSimilarCLIPButton" class="btn btn-primary ml-1 my-sm-0">Find Similar Images (CLIP)</button>
         </div>
 
+        <form method="post" action="{% url 'feedback_loop' %}" class="form-inline">
+            {% csrf_token %}
+            <button id="feedbackImageButton" class="btn btn-primary ml-2 my-sm-0">Bayesian Update</button>
+        </form>
+
         <div class="navbar-nav mx-auto">
             <div class="myFormattedText">
 {#            TODO Only format "Text Query" and "Last Selected Image" instead of entire text to make visibility easier."#}
@@ -85,6 +90,7 @@
 </nav>
 <div class="container-fluid">
     <div class="row" id="imageGrid">
+{# TODO Resize all images to be square instead of 16:9 to save space, since context is still there. #}
         {% for filename, similarity in filenames %}
             <div class="col-2 image-container">
                 <img src="{{ filename }}" id="{{ filename }}" class="rounded mx-auto d-block my-1" onclick="selectImage('{{ filename }}')" alt="Image">
@@ -156,6 +162,23 @@
         } else {
             $.get('/combined_clip/', function(data) {
                 console.log(data.result);
+            });
+        }
+    };
+
+    document.getElementById('feedbackImageButton').onclick = function() {
+        event.preventDefault();
+
+        alert("TEST")
+        const input = document.getElementById('lastSelected');
+        console.log("lastSelected value:", input.value);
+        if (!input.value) {
+            alert('Please select an image for bayesian feedback.');
+            return false;
+        } else {
+            console.log("Last Selected Image:", input.value);
+            $.post('/feedback_loop/', { lastSelected: "TEST" }, function(data) {
+                {#console.log(data.result);#}
             });
         }
     };
