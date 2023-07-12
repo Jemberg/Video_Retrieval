@@ -52,8 +52,8 @@
         <div class="">
             <a href="/" class="btn btn-primary ml-2 my-sm-0">Home</a>
 {#            TODO When selecting image, see also CSV file information about it when hovering over. #}
-            <button id="findSimilarHistogramButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (Histogram)</button>
-            <button id="findSimilarCLIPButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (CLIP)</button>
+            <button id="findSimilarHistogramButton" class="btn btn-primary ml-1 my-sm-0">Find Similar Images (Histogram)</button>
+            <button id="findSimilarCLIPButton" class="btn btn-primary ml-1 my-sm-0">Find Similar Images (CLIP)</button>
         </div>
 
         <div class="navbar-nav mx-auto">
@@ -70,11 +70,17 @@
 
         <form method="post" action="{% url 'search_clip' %}" class="form-inline">
             {% csrf_token %}
-            <input name="query" id="searchClipInput" class="form-control mr-sm-2 my-1" type="text" placeholder="Search" aria-label="CLIP Text Search">
-            <button type="submit" id="searchClipButton" class="btn btn-success my-2 mx-2 my-sm-0">Text Search (CLIP)</button>
-            <button type="submit" id="combinedClipButton" class="btn btn-success ml-2 mx-2 my-sm-0">Combined Search (CLIP)</button>
-            <button id="sendResultButton" class="btn btn-danger ml-2 my-sm-0">Send selected Image</button>
+            <input name="query" id="searchClipInput" class="form-control mr-sm-2 mx-1" type="text" placeholder="CLIP Text Search" aria-label="CLIP Text Search">
+            <button type="submit" id="searchClipButton" class="btn btn-success mr-1 my-sm-0">Text Search (CLIP)</button>
         </form>
+
+        <form method="post" action="{% url 'combined_clip' %}" class="form-inline">
+            {% csrf_token %}
+            <input name="query" id="combinedClipText" class="form-control mr-sm-2 my-1 mx-1" type="text" placeholder="Combined CLIP Search" aria-label="CLIP Text Search">
+            <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search (CLIP)</button>
+        </form>
+
+        <button id="sendResultButton" class="btn btn-danger ml-1 my-sm-0">Send selected Image</button>
     </div>
 </nav>
 <div class="container-fluid">
@@ -137,18 +143,15 @@
         }
     };
 
-    // TODO Replace with solution described here: https://chat.openai.com/share/9c2cc06d-9ade-4c79-bcbd-84d489bf9b1a
     document.getElementById('combinedClipButton').onclick = function() {
-        // TODO Create proper function that makes sure that image is selected and text query is entered, otherwise this function cannot be executed.
-        const input = document.getElementById('searchClipInput');
+        const input = document.getElementById('combinedClipText');
         const selectedImage = document.getElementById('lastSelected');
-        console.log(selectedImage);
-        // TODO Replace alerts with Bootstrap equivalent option for better design.
+
         if (input.value === '') {
-            alert('Please enter some text to execute combined search.');
+            alert('Please enter some text to search.');
             return false;  // This will prevent the form from being submitted
-        } else if (selectedImage === null){
-            alert('Please select an to execute combined search.');
+        } else if (selectedImage === null) {
+            alert('Please select an image.');
             return false;  // This will prevent the form from being submitted
         } else {
             $.get('/combined_clip/', function(data) {

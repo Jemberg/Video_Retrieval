@@ -191,6 +191,7 @@ def find_similar_histogram(request):
 
 def combined_clip(request):
     print("Combined clip function called")
+    print()
     # Load the model
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)
