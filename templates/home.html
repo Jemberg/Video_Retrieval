@@ -36,30 +36,44 @@
             font-size: 20px; /* Adjust as needed */
             color: white;
         }
+        .myFormattedText {
+            font-weight: bold;          /* Font weight */
+            font-size: 18px;            /* Font size */
+            font-family: Arial, sans-serif; /* Font family */
+            padding: 5px;               /* Padding */
+            border-radius: 5px;         /* Rounded corners */
+            text-shadow: 1px 1px 1px #000; /* Text shadow */
+        }
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <div class="collapse navbar-collapse" id="navbarNavDropdown">
-        <div class="mr-2">
-            <a href="/" class="btn btn-primary ml-2 mr-2">Home</a>
-            Last selected image: <span id="lastSelected"></span>
+        <div class="">
+            <a href="/" class="btn btn-primary ml-2 my-sm-0">Home</a>
 {#            TODO When selecting image, see also CSV file information about it when hovering over. #}
-            <button id="findSimilarHistogramButton" class="btn btn-primary ml-2">Find Similar Images (Histogram)</button>
-            <button id="findSimilarCLIPButton" class="btn btn-primary ml-2">Find Similar Images (CLIP)</button>
+            <button id="findSimilarHistogramButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (Histogram)</button>
+            <button id="findSimilarCLIPButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (CLIP)</button>
         </div>
 
         <div class="navbar-nav mx-auto">
-            <div>
-                <button id="sendResultButton" class="btn btn-danger">Send selected Image</button>
+            <div class="myFormattedText">
+{#            TODO Only format "Text Query" and "Last Selected Image" instead of entire text to make visibility easier."#}
+                {% if query %}
+                    Text Query: <span>{{ query }}</span>,
+                    Last selected image: <span id="lastSelected"></span>
+                {% else %}
+                    Last selected image: <span id="lastSelected"></span>
+                {% endif %}
             </div>
         </div>
 
-        <form method="post" action="{% url 'search_clip' %}" class="form-inline my-2 my-lg-0">
+        <form method="post" action="{% url 'search_clip' %}" class="form-inline">
             {% csrf_token %}
-            <input name="query" id="searchClipInput" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="CLIP Text Search">
-            <button type="submit" id="searchClipButton" class="btn btn-success my-2 my-sm-0">Text Search (CLIP)</button>
-            <button type="submit" id="combinedClipButton" class="btn btn-success ml-2 my-2 my-sm-0">Combined Search (CLIP)</button>
+            <input name="query" id="searchClipInput" class="form-control mr-sm-2 my-1" type="text" placeholder="Search" aria-label="CLIP Text Search">
+            <button type="submit" id="searchClipButton" class="btn btn-success my-2 mx-2 my-sm-0">Text Search (CLIP)</button>
+            <button type="submit" id="combinedClipButton" class="btn btn-success ml-2 mx-2 my-sm-0">Combined Search (CLIP)</button>
+            <button id="sendResultButton" class="btn btn-danger ml-2 my-sm-0">Send selected Image</button>
         </form>
     </div>
 </nav>
@@ -95,13 +109,11 @@
     }
 
     document.getElementById('searchClipButton').onclick = function() {
-        console.log("searchClipButton Triggered.");
         const input = document.getElementById('searchClipInput');
         if (input.value === '') {
             alert('Please enter some text to search.');
             return false;  // This will prevent the form from being submitted
         } else {
-            console.log("Search clip triggered!")
             $.get('/search_clip/', function(data) {
                 console.log(data.result);
             });
@@ -115,12 +127,32 @@
             });
         }
     };
+
     document.getElementById('findSimilarButton').onclick = function() {
+        let selectedImage = document.getElementById('lastSelected');
         if (selectedImage) {
             $.get('/find_similar/' + selectedImage + '/', function(data) {
-                data.similar_images = undefined;
-                console.log(data.similar_images);
-                // Here, you might want to do something with the similar images, like displaying them on the page.
+                console.log(data.result);
+            });
+        }
+    };
+
+    // TODO Replace with solution described here: https://chat.openai.com/share/9c2cc06d-9ade-4c79-bcbd-84d489bf9b1a
+    document.getElementById('combinedClipButton').onclick = function() {
+        // TODO Create proper function that makes sure that image is selected and text query is entered, otherwise this function cannot be executed.
+        const input = document.getElementById('searchClipInput');
+        const selectedImage = document.getElementById('lastSelected');
+        console.log(selectedImage);
+        // TODO Replace alerts with Bootstrap equivalent option for better design.
+        if (input.value === '') {
+            alert('Please enter some text to execute combined search.');
+            return false;  // This will prevent the form from being submitted
+        } else if (selectedImage === null){
+            alert('Please select an to execute combined search.');
+            return false;  // This will prevent the form from being submitted
+        } else {
+            $.get('/combined_clip/', function(data) {
+                console.log(data.result);
             });
         }
     };
