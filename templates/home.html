@@ -108,7 +108,6 @@
 </footer>
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
-
     let selectedImage = '';
 
     function selectImage(filename) {
@@ -133,8 +132,9 @@
     };
 
     document.getElementById('sendResultButton').onclick = function() {
-        if (selectedImage) {
-            $.get('/send_result/' + selectedImage + '/', function(data) {
+        console.log("Sending selected image");
+        if (true) {
+            $.get('/send_result/', function(data) {
                 console.log(data.result);
             });
         }

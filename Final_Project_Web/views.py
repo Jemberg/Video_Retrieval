@@ -95,13 +95,16 @@ def search_clip(request, shown=None, image_size=None):
     context = {'filenames': filename_similarity_zip, "query": query}
     return render(request, 'home.html', context)
 
-def send_result(request, image_name):
-    key_i = (image_name[-9:])[:5]
-    my_obj = {'team': "name", 'item': key_i}
-    # response = requests.get(url="https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php", params=my_obj)
-    # return JsonResponse({'result': response.text})
-    # TODO Reactivate sending to endpoint.
-    return 0
+def send_result(request):
+    # TODO Fix send_result not being found
+    print("Sent response to server.")
+    # key_i = (image_name[-9:])[:5]
+    my_obj = {'team': "Martin", 'item': "21354"}
+    # Query that worked: https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php?team=Martin&item=24563
+    # Query to check on: https://siret.ms.mff.cuni.cz/lokoc/VBSEval/eval.php
+    response = requests.get(url="https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php", params=my_obj, verify=False)
+    print(response)
+    return JsonResponse({'result': response.text})
 
 # TODO find_similar has to be implemented properly.
 def find_similar(request, image_id, similar_images=None):
