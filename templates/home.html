@@ -92,7 +92,7 @@
     <div class="row justify-content-start" id="imageGrid">
         {% for filename, similarity in filenames %}
             <div class="image-container">
-                <img src="{{ filename }}" id="{{ filename }}" style="width: 192px; height: 192px; object-fit: cover;" class="d-block my-1 mx-1" onclick="selectImage('{{ filename }}')" alt="Image">
+                <img src="{{ filename }}" id="{{ filename }}" style="width: 166px; height: 166px; object-fit: cover;" class="d-block my-1 mx-1" onclick="selectImage('{{ filename }}')" alt="Image">
                 {% if similarity %}
                     <div class="overlay-text">{{ similarity }}</div>
                 {% endif %}
@@ -101,27 +101,34 @@
     </div>
 </div>
 
-<div class="pagination">
-    <span class="step-links">
-        {% if page_obj.has_previous %}
-            <a href="?page=1">&laquo; first</a>
-            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
-        {% endif %}
-
-        <span class="current">
-            Page {{ filenames.number }} of {{ total_pages }}.
-        </span>
-    </span>
+<div class="d-flex justify-content-center my-1">
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <li class="page-item">
+                <a class="page-link" href="?page=1" tabindex="-1" aria-disabled="true">First</a>
+            </li>
+            <li class="page-item {% if filenames.number == 1 %}disabled{% endif %}">
+                <a class="page-link" href="?page={{ filenames.number|add:'-1' }} }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            <li class="page-item active">
+                <a class="page-link" href="#">Page {{ filenames.number }} of {{ total_pages }} <span class="sr-only">(current)</span></a>
+            </li>
+            <li class="page-item {% if not filenames.next_page_number < total_pages %}disabled{% endif %}">
+                <a class="page-link" href="?page={{ filenames.number|add:'1' }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ total_pages }}">Last</a>
+            </li>
+        </ul>
+    </nav>
 </div>
-{% if filenames.has_previous %}
-    <a href="?page={{ filenames.previous_page_number }}">Previous</a>
-{% endif %}
 
-{% if filenames.has_next %}
-    <a href="?page={{ filenames.next_page_number }}"> Next</a>
-{% endif %}
 
-<footer class="footer mt-auto py-3 bg-dark">
+<footer class="footer mt-auto py-2 bg-dark">
     <div class="container text-center">
         <span class="text-light">Created by <a href="https://martinjemberg.com/" class="text-warning">Mārtiņš Dāvis Jembergs</a></span>
     </div>

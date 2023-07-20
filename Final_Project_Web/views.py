@@ -45,6 +45,8 @@ from sklearn_som.som import SOM
 import pickle
 import os
 
+imagesPerPage = 1000
+
 # Load the model and tokenizer when the module is loaded
 print("Loading model and tokenizer.")
 model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
@@ -102,11 +104,12 @@ def home(request):
             pickle.dump(filename_cluster_zip, f)
 
     # Pagination
-    paginator = Paginator(filename_cluster_zip, 500) # Show 100 images per page
+    paginator = Paginator(filename_cluster_zip, imagesPerPage)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    page_amount = paginator.num_pages
 
-    context = {'filenames': page_obj, 'total_pages': paginator.num_pages}
+    context = {'filenames': page_obj, 'total_pages': page_amount}
     return render(request, 'home.html', context)
 
 def search_clip(request, shown=None, image_size=None):
@@ -351,11 +354,6 @@ def search_lion(request):
     filenames = []
     similarityExcl = []
 
-    # print("Loading model.")
-    # model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
-    # print("Loading tokenizer.")
-    # tokenizer = open_clip.get_tokenizer('ViT-B-32')
-
     print("Tokenizing text.")
     # Text queries
     text_queries = [query]
@@ -419,11 +417,12 @@ def search_lion(request):
     filename_similarity_zip = list(zip(filenames, similarityExcl))
 
     # Pagination
-    paginator = Paginator(filename_similarity_zip, 500) # Show 100 images per page
+    paginator = Paginator(filename_similarity_zip, imagesPerPage) # Show 100 images per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    page_amount = paginator.num_pages
 
-    context = {'filenames': page_obj, 'total_pages': paginator.num_pages}
+    context = {'filenames': page_obj, 'total_pages': page_amount}
     print("Returning results.")
     return render(request, 'home.html', context)
 
