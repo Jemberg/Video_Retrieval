@@ -141,6 +141,7 @@ venv.bak/
 # Resources
 Images
 Features
+.pt
 
 # mypy
 .mypy_cache/
