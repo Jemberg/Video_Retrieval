@@ -20,21 +20,84 @@ import torch
 from PIL import Image
 import open_clip
 
+import matplotlib.pyplot as plt
+from sklearn_som.som import SOM
+import numpy as np
+
 dataset_path = os.path.join(settings.MEDIA_ROOT, 'Images')
 folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
 
-def home(request):
-    filenames = []
-    emptySimilarity = []
-    for i, fn in enumerate(sorted(os.listdir(dataset_path))):
-        if i >= 504:  # only take the first 100 files
-            break
-        filename = os.path.join(settings.MEDIA_URL, 'Images', fn)
-        print(filename)
-        filenames.append(filename)
-        emptySimilarity.append(" ")
+import os
+import torch
+import numpy as np
+from sklearn_som.som import SOM
+from django.shortcuts import render
+from django.conf import settings
 
-    context = {'filenames': zip(filenames, emptySimilarity)}
+from django.shortcuts import render
+from django.conf import settings
+from django.core.paginator import Paginator
+import os
+import torch
+import numpy as np
+from sklearn_som.som import SOM
+
+import pickle
+import os
+
+def home(request):
+    # Directory of features
+    features_dir = 'Features'
+    clusters_file = 'clusters.pkl'
+
+    # Gather all the feature vectors into a list
+    all_features = []
+    filenames = []
+    counter = 0
+
+    # Check if cluster assignments have already been calculated
+    if os.path.exists(clusters_file):
+        with open(clusters_file, 'rb') as f:
+            filename_cluster_zip = pickle.load(f)
+    else:
+        # Loop over all feature files in the directory
+        for feature_file in sorted(os.listdir(features_dir)):
+            # Load the features from disk
+            features = torch.load(os.path.join(features_dir, feature_file))
+
+            # Append the features to the list
+            # We use .numpy() to convert the features from a PyTorch tensor to a numpy array
+            all_features.append(features.numpy())
+
+            # Append the corresponding image filename to the filenames list
+            image_file = feature_file.replace('.pt', '')
+            filenames.append(os.path.join(settings.MEDIA_URL, 'Images', image_file))
+            counter += 1
+
+        # Stack all the feature vectors into a 2D numpy array
+        # Each row of this array is a feature vector
+        data = np.vstack(all_features)
+
+        # Determine the number of features from the shape of the data array
+        n_features = data.shape[1]
+
+        # Initialize a SOM with the correct number of features
+        som = SOM(m=25, n=40, dim=n_features)
+
+        # Fit the SOM to the data and get the cluster assignments
+        cluster_assignments = som.fit_predict(data)
+
+        # Create a list of (filename, cluster_assignment) tuples
+        filename_cluster_zip = list(zip(filenames, cluster_assignments))
+
+        # Sort the list based on cluster assignments
+        filename_cluster_zip.sort(key=lambda x: x[1])
+
+        # Save the cluster assignments for future use
+        with open(clusters_file, 'wb') as f:
+            pickle.dump(filename_cluster_zip, f)
+
+    context = {'filenames': filename_cluster_zip}
     return render(request, 'home.html', context)
 
 def search_clip(request, shown=None, image_size=None):
