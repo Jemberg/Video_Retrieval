@@ -119,3 +119,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, '')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}

@@ -89,10 +89,10 @@
     </div>
 </nav>
 <div class="container-fluid">
-    <div class="row" id="imageGrid">
+    <div class="row justify-content-start" id="imageGrid">
         {% for filename, similarity in filenames %}
-            <div class="flex-fill image-container">
-                <img src="{{ filename }}" id="{{ filename }}" style="width: 192px; height: 192px; object-fit: cover;" class="d-block my-1" onclick="selectImage('{{ filename }}')" alt="Image">
+            <div class="image-container">
+                <img src="{{ filename }}" id="{{ filename }}" style="width: 192px; height: 192px; object-fit: cover;" class="d-block my-1 mx-1" onclick="selectImage('{{ filename }}')" alt="Image">
                 {% if similarity %}
                     <div class="overlay-text">{{ similarity }}</div>
                 {% endif %}
@@ -109,15 +109,17 @@
         {% endif %}
 
         <span class="current">
-            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+            Page {{ filenames.number }} of {{ total_pages }}.
         </span>
-
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}">next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
-        {% endif %}
     </span>
 </div>
+{% if filenames.has_previous %}
+    <a href="?page={{ filenames.previous_page_number }}">Previous</a>
+{% endif %}
+
+{% if filenames.has_next %}
+    <a href="?page={{ filenames.next_page_number }}"> Next</a>
+{% endif %}
 
 <footer class="footer mt-auto py-3 bg-dark">
     <div class="container text-center">

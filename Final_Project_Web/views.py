@@ -45,6 +45,12 @@ from sklearn_som.som import SOM
 import pickle
 import os
 
+# Load the model and tokenizer when the module is loaded
+print("Loading model and tokenizer.")
+model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
+tokenizer = open_clip.get_tokenizer('ViT-B-32')
+print("Loading model and tokenizer done.")
+
 def home(request):
     # Directory of features
     features_dir = 'Features'
@@ -66,7 +72,6 @@ def home(request):
             features = torch.load(os.path.join(features_dir, feature_file))
 
             # Append the features to the list
-            # We use .numpy() to convert the features from a PyTorch tensor to a numpy array
             all_features.append(features.numpy())
 
             # Append the corresponding image filename to the filenames list
@@ -75,7 +80,6 @@ def home(request):
             counter += 1
 
         # Stack all the feature vectors into a 2D numpy array
-        # Each row of this array is a feature vector
         data = np.vstack(all_features)
 
         # Determine the number of features from the shape of the data array
@@ -97,7 +101,12 @@ def home(request):
         with open(clusters_file, 'wb') as f:
             pickle.dump(filename_cluster_zip, f)
 
-    context = {'filenames': filename_cluster_zip}
+    # Pagination
+    paginator = Paginator(filename_cluster_zip, 500) # Show 100 images per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {'filenames': page_obj, 'total_pages': paginator.num_pages}
     return render(request, 'home.html', context)
 
 def search_clip(request, shown=None, image_size=None):
@@ -146,9 +155,9 @@ def search_clip(request, shown=None, image_size=None):
         similarity = cosine_similarity(text_features, image_features)[0][0]
         similarities.append((image_path, similarity))
 
-        counter += 1
-        if counter >= 144:  # Stop processing after 100 images
-            break
+        # counter += 1
+        # if counter >= 144:  # Stop processing after 100 images
+        #     break
 
     # Sort the results by similarity in descending order
     similarities.sort(key=lambda x: x[1], reverse=True)
@@ -330,16 +339,24 @@ def show_surrounding():
     return 0
 
 def search_lion(request):
-    query = request.POST.get('query', '')
-    print("query value: ", query)
+    query = request.POST.get('query')
+    if query is not None:
+        print("Query: ", query)
+        # Store the query in the session
+        request.session['query'] = query
+    else:
+        # Fetch the query from the session
+        query = request.session.get('query', '')
 
     filenames = []
     similarityExcl = []
 
-    print("Loading model and tokenizer.")
-    model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
-    tokenizer = open_clip.get_tokenizer('ViT-B-32')
+    # print("Loading model.")
+    # model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
+    # print("Loading tokenizer.")
+    # tokenizer = open_clip.get_tokenizer('ViT-B-32')
 
+    print("Tokenizing text.")
     # Text queries
     text_queries = [query]
     text = tokenizer(text_queries)
@@ -350,6 +367,7 @@ def search_lion(request):
     # Directory to save image features
     features_dir = 'Features'
 
+    print("Extracting text features.")
     with torch.no_grad(), torch.cuda.amp.autocast():
         text_features = model.encode_text(text)
         text_features /= text_features.norm(dim=-1, keepdim=True)
@@ -357,9 +375,11 @@ def search_lion(request):
     results = []
     counter = 0
 
+    print("Looping over all images to compare to text features.")
     # Loop over all images in the directory in sorted order
     for image_file in sorted(os.listdir(image_dir)):
         features_path = os.path.join(features_dir, image_file + '.pt')
+        # print("Current feature being processed: ", features_path)
 
         # Check if features already exist
         if os.path.exists(features_path):
@@ -376,7 +396,6 @@ def search_lion(request):
             # Save the image features to disk
             torch.save(image_features, features_path)
 
-        # TODO Replace with matrix multiplication
         # Calculate the dot product (similarity) between the text and image embeddings
         similarities = (image_features @ text_features.T).squeeze(0)
 
@@ -392,11 +411,22 @@ def search_lion(request):
     results.sort(key=lambda x: x[1], reverse=True)
 
     # Limit to the top 144 results
-    results = results[:144]
+    # results = results[:144]
 
     # Split the sorted results into separate lists
     filenames, _, similarityExcl = zip(*results)
 
-    filename_similarity_zip = zip(filenames, similarityExcl)
-    context = {'filenames': filename_similarity_zip, "query": query}
+    filename_similarity_zip = list(zip(filenames, similarityExcl))
+
+    # Pagination
+    paginator = Paginator(filename_similarity_zip, 500) # Show 100 images per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {'filenames': page_obj, 'total_pages': paginator.num_pages}
+    print("Returning results.")
     return render(request, 'home.html', context)
+
+    # context = {'filenames': filename_similarity_zip, "query": query}
+    # print("Returning results.")
+    # return render(request, 'home.html', context)
