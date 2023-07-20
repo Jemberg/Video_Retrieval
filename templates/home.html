@@ -56,9 +56,16 @@
             <button id="findSimilarCLIPButton" class="btn btn-primary ml-1 my-sm-0">Find Similar Images (CLIP)</button>
         </div>
 
-        <form method="post" action="{% url 'feedback_loop' %}" class="form-inline">
+        <form id="feedbackForm" method="post" action="{% url 'feedback_loop' %}">
             {% csrf_token %}
-            <button id="feedbackImageButton" class="btn btn-primary ml-2 my-sm-0">Bayesian Update</button>
+            <input type="hidden" id="likeID" name="likeID" value="">
+            <input type="submit" id="feedbackImageButton" class="btn btn-primary ml-2 my-sm-0" value="Bayesian Update">
+        </form>
+
+{#        TODO Implement reset button #}
+        <form id="resetForm" method="post" action="{% url 'reset_scores' %}">
+            {% csrf_token %}
+            <input type="submit" id="resetFeedbackButton" class="btn btn-primary ml-2 my-sm-0" value="Reset">
         </form>
 
         <div class="navbar-nav mx-auto">
@@ -75,15 +82,15 @@
 
         <form method="post" action="{% url 'search_clip' %}" class="d-flex form-inline">
             {% csrf_token %}
-            <input name="query" id="searchClipInput" class="form-control mr-sm-2 mx-1" type="text" placeholder="CLIP Text Search" aria-label="CLIP Text Search">
-            <button type="submit" id="searchClipButton" class="btn btn-success mr-1 my-sm-0">Text Search (CLIP)</button>
+            <input name="query" id="searchClipInput" class="form-control mr-sm-2 mx-1" type="text" placeholder="Text Search" aria-label="Text Search">
+            <button type="submit" id="searchClipButton" class="btn btn-success mr-1 my-sm-0">Text Search</button>
         </form>
 
-        <form method="post" action="{% url 'combined_clip' %}" class="d-flex form-inline">
-            {% csrf_token %}
-            <input name="query" id="combinedClipText" class="form-control mr-sm-2 my-1 mx-1" type="text" placeholder="Combined CLIP Search" aria-label="CLIP Text Search">
-            <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search (CLIP)</button>
-        </form>
+{#        <form method="post" action="{% url 'combined_clip' %}" class="d-flex form-inline">#}
+{#            {% csrf_token %}#}
+{#            <input name="query" id="combinedClipText" class="form-control mr-sm-2 my-1 mx-1" type="text" placeholder="Combined Search" aria-label="Text Search">#}
+            <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search</button>
+{#        </form>#}
 
         <button id="sendResultButton" class="btn btn-danger ml-1 my-sm-0">Send selected Image</button>
     </div>
@@ -144,7 +151,10 @@
         selectedImage = filename;
         document.getElementById(filename).classList.add('highlighted');
         document.getElementById('lastSelected').innerText = filename.slice(-9);
+        // Set the form value
+        document.getElementById('likeID').value = filename.slice(-9);
     }
+
 
     document.getElementById('searchClipButton').onclick = function() {
         const input = document.getElementById('searchClipInput');
@@ -193,22 +203,17 @@
         }
     };
 
-    document.getElementById('feedbackImageButton').onclick = function() {
-        event.preventDefault();
-
-        alert("TEST")
+    document.getElementById('feedbackForm').addEventListener('submit', function(event) {
         const input = document.getElementById('lastSelected');
         console.log("lastSelected value:", input.value);
         if (!input.value) {
             alert('Please select an image for bayesian feedback.');
-            return false;
+            event.preventDefault();
         } else {
             console.log("Last Selected Image:", input.value);
-            $.post('/feedback_loop/', { lastSelected: "TEST" }, function(data) {
-                {#console.log(data.result);#}
-            });
         }
-    };
+    });
+
 </script>
 </body>
 </html>

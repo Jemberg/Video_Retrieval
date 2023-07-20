@@ -3,7 +3,7 @@ from Final_Project_Web import views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
-from .views import search_clip, combined_clip, feedback_loop, send_result, search_lion
+from .views import combined_clip, feedback_loop, send_result, search_lion, reset_scores
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -11,6 +11,7 @@ urlpatterns = [
     path("combined_clip", combined_clip, name="combined_clip"),
     path("send_result", send_result, name="send_result"),
     path("feedback_loop", feedback_loop, name="feedback_loop"),
+    path("reset_scores", reset_scores, name="reset_scores")
     # path('send_result/<str:image_name>/', views.send_result, name='send_result'),
     # path('find_similar/<str:image_id>/', views.find_similar, name='find_similar'),
 ]
