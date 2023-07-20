@@ -1,25 +1,33 @@
-import math
-
 from django.http import JsonResponse
 from django.conf import settings
 from django.shortcuts import render
-import os
+from PIL import Image
+from open_clip import tokenizer
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.spatial import distance
+
 import torch
 import clip
-from PIL import Image
-from sklearn.metrics.pairwise import cosine_similarity
 import cv2
 import numpy as np
-from scipy.spatial import distance
 import requests
 import os
+import math
+import open_clip
+
+import os
+import torch
+from PIL import Image
+import open_clip
+
 dataset_path = os.path.join(settings.MEDIA_ROOT, 'Images')
+folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
 
 def home(request):
     filenames = []
     emptySimilarity = []
     for i, fn in enumerate(sorted(os.listdir(dataset_path))):
-        if i >= 50:  # only take the first 100 files
+        if i >= 504:  # only take the first 100 files
             break
         filename = os.path.join(settings.MEDIA_URL, 'Images', fn)
         print(filename)
@@ -47,8 +55,8 @@ def search_clip(request, shown=None, image_size=None):
     similarityExcl = []
     # Exclusively only stores the numbers for the similarities
 
-    # Folder containing the images
-    folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
+    # # Folder containing the images
+    # folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
 
     # Counter for number of images processed
     counter = 0
@@ -75,10 +83,8 @@ def search_clip(request, shown=None, image_size=None):
         similarity = cosine_similarity(text_features, image_features)[0][0]
         similarities.append((image_path, similarity))
 
-        print("Image: ", counter)
-        # TODO counter has be 10000, but response has to be limited to 100-1000 for bandwidth reasons unless NGROK is upgraded.
         counter += 1
-        if counter >= 100:  # Stop processing after 100 images
+        if counter >= 144:  # Stop processing after 100 images
             break
 
     # Sort the results by similarity in descending order
@@ -254,4 +260,80 @@ def feedback_loop(request):
 
     # TODO Negative examples can be 20-30 images, does not have to be all of the rest of the images.
     context = {'filenames': positive_image}
+    return render(request, 'home.html', context)
+
+def show_surrounding():
+    # TODO Show 50 images before and 50 after the one selected.
+    return 0
+
+def search_lion(request):
+    query = request.POST.get('query', '')
+    print("query value: ", query)
+
+    filenames = []
+    similarityExcl = []
+
+    print("Loading model and tokenizer.")
+    model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
+    tokenizer = open_clip.get_tokenizer('ViT-B-32')
+
+    # Text queries
+    text_queries = [query]
+    text = tokenizer(text_queries)
+
+    # Directory of images
+    image_dir = 'Images'
+
+    # Directory to save image features
+    features_dir = 'Features'
+
+    with torch.no_grad(), torch.cuda.amp.autocast():
+        text_features = model.encode_text(text)
+        text_features /= text_features.norm(dim=-1, keepdim=True)
+
+    results = []
+    counter = 0
+
+    # Loop over all images in the directory in sorted order
+    for image_file in sorted(os.listdir(image_dir)):
+        features_path = os.path.join(features_dir, image_file + '.pt')
+
+        # Check if features already exist
+        if os.path.exists(features_path):
+            # Load the image features from disk
+            image_features = torch.load(features_path)
+        else:
+            # Load and preprocess the image
+            image = preprocess(Image.open(os.path.join(image_dir, image_file))).unsqueeze(0)
+
+            # Get the embeddings for the image
+            image_features = model.encode_image(image)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+
+            # Save the image features to disk
+            torch.save(image_features, features_path)
+
+        # TODO Replace with matrix multiplication
+        # Calculate the dot product (similarity) between the text and image embeddings
+        similarities = (image_features @ text_features.T).squeeze(0)
+
+        for query, similarity in zip(text_queries, similarities):
+            # print(f'The similarity between the text query "{query}" and the image {image_file} is {similarity.item()}')
+            image_path = os.path.join(folder_path, image_file)
+            similarity_pct = "{:.3f}".format(similarity * 100) + "%"
+
+            # Store the results
+            results.append((image_path, similarity.item(), similarity_pct))
+
+    # Sort the results by similarity in descending order
+    results.sort(key=lambda x: x[1], reverse=True)
+
+    # Limit to the top 144 results
+    results = results[:144]
+
+    # Split the sorted results into separate lists
+    filenames, _, similarityExcl = zip(*results)
+
+    filename_similarity_zip = zip(filenames, similarityExcl)
+    context = {'filenames': filename_similarity_zip, "query": query}
     return render(request, 'home.html', context)
