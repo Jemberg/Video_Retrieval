@@ -343,33 +343,76 @@ def L2S(feature1, feature2):
     return np.sum((feature1 - feature2) ** 2)
 
 from annoy import AnnoyIndex
-
+import time
 # Speed up the process by using an approximate nearest neighbors search algorithm instead of computing all pairwise distances.
 # Constructs an index with Annoy and then queries it to get the distance between vectors
+# def UpdateScores(features, scores, display, likeID, alpha):
+#     start_time = time.time()
+#     # Convert lists to numpy arrays for vectorized operations
+#     features = np.array(features)
+#     scores = np.array(scores)
+#
+#     # Compute the squared L2 norm between the liked feature and all other features
+#     diff = features - features[likeID]
+#     L2_norms = np.sum(diff ** 2, axis=1)
+#
+#     # Compute the positive factor (PF)
+#     PF = np.exp(-L2_norms / alpha)
+#
+#     # Compute the negative factor (NF)
+#     NF = np.zeros_like(scores)
+#     for j in display:
+#         if j != likeID:
+#             diff = features - features[j]
+#             L2_norms = np.sum(diff ** 2, axis=1)
+#             NF += np.exp(-L2_norms / alpha)
+#
+#     # Update the scores
+#     scores = scores * PF / (NF + 1e-9)  # add a small constant to avoid division by zero
+#     end_time = time.time()
+#     execution_time = end_time - start_time
+#     print(f"The function took {execution_time} seconds to execute.")
+#     return scores
+
+import numpy as np
+from multiprocessing import Pool
+
+import torch
+
 def UpdateScores(features, scores, display, likeID, alpha):
-    # Convert lists to numpy arrays for vectorized operations
-    features = np.array(features)
-    scores = np.array(scores)
+    start_time = time.time()
+
+    # Move data to the GPU
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    features = torch.tensor(features, device=device)
+    scores = torch.tensor(scores, device=device)
 
     # Compute the squared L2 norm between the liked feature and all other features
     diff = features - features[likeID]
-    L2_norms = np.sum(diff ** 2, axis=1)
+    L2_norms = torch.sum(diff ** 2, axis=1)
 
     # Compute the positive factor (PF)
-    PF = np.exp(-L2_norms / alpha)
+    PF = torch.exp(-L2_norms / alpha)
 
     # Compute the negative factor (NF)
-    NF = np.zeros_like(scores)
+    NF = torch.zeros_like(scores)
     for j in display:
         if j != likeID:
             diff = features - features[j]
-            L2_norms = np.sum(diff ** 2, axis=1)
-            NF += np.exp(-L2_norms / alpha)
+            L2_norms = torch.sum(diff ** 2, axis=1)
+            NF += torch.exp(-L2_norms / alpha)
 
     # Update the scores
     scores = scores * PF / (NF + 1e-9)  # add a small constant to avoid division by zero
-    return scores
 
+    # Move scores back to the CPU and convert to numpy
+    scores = scores.cpu().numpy()
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"The function took {execution_time} seconds to execute.")
+
+    return scores
 
 
 def feedback_loop(request):
@@ -405,9 +448,11 @@ def feedback_loop(request):
     print("Updating scores")
     scores = UpdateScores(features, scores, display, likeID, alpha)
 
+    print("Normalizing scores")
     # Normalizing score
     scores = scores / np.sum(scores)
 
+    print("Saving old scores")
     # Save the updated scores for the next session
     np.save(scores_path, scores)
 
@@ -417,6 +462,7 @@ def feedback_loop(request):
     # Combine the filenames and scores
     results = list(zip([str(i).zfill(5) + '.jpg' for i in range(len(features))], scores, scores_pct))
 
+    print("Sorting scores")
     # Sort the results by score in descending order
     results.sort(key=lambda x: x[1], reverse=True)
 
@@ -425,7 +471,6 @@ def feedback_loop(request):
 
     # Generate the correct paths for each filename
     filenames = [os.path.join(folder_path, filename) for filename in filenames]
-    print(filenames)
     # Combine the filenames and scores again
     filename_score_zip = list(zip(filenames, scores_pct))
 
