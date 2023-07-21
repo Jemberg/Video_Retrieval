@@ -1,43 +1,18 @@
-from django.http import JsonResponse
-from django.conf import settings
-from django.shortcuts import render
-from PIL import Image
-from open_clip import tokenizer
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.spatial import distance
+import os
+import time
 
-import torch
 import clip
 import cv2
-import numpy as np
+import open_clip
 import requests
-import os
-import math
-import open_clip
-
-import os
-import torch
 from PIL import Image
-import open_clip
-
-import matplotlib.pyplot as plt
-from sklearn_som.som import SOM
-import numpy as np
-
-dataset_path = os.path.join(settings.MEDIA_ROOT, 'Images')
-folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
-
-import os
-import torch
-import numpy as np
-from sklearn_som.som import SOM
-from django.shortcuts import render
 from django.conf import settings
+from django.http import JsonResponse
+from open_clip import tokenizer
+from scipy.spatial import distance
 
-from django.shortcuts import render
 from django.conf import settings
 from django.core.paginator import Paginator
-import os
 import torch
 import numpy as np
 from sklearn_som.som import SOM
@@ -45,13 +20,16 @@ from sklearn_som.som import SOM
 import pickle
 import os
 
+dataset_path = os.path.join(settings.MEDIA_ROOT, 'Images')
+folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
+
 imagesPerPage = 1000
 
 # Load the model and tokenizer when the module is loaded
 print("Loading model and tokenizer.")
 model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
 tokenizer = open_clip.get_tokenizer('ViT-B-32')
-print("Loading model and tokenizer done.")
+print("Loading done.")
 
 def home(request):
     # Directory of features
@@ -112,66 +90,6 @@ def home(request):
     context = {'filenames': page_obj, 'total_pages': page_amount}
     return render(request, 'home.html', context)
 
-# def search_clip(request, shown=None, image_size=None):
-#     filenames = []
-#
-#     # Load the model
-#     device = "cuda" if torch.cuda.is_available() else "cpu"
-#     if torch.cuda.is_available(): print("CUDA Enabled.")
-#     model, preprocess = clip.load("ViT-B/32", device=device)
-#
-#     # Prepare the text
-#     query = request.POST.get('query', '')
-#     print("query value: ", query)
-#     text = clip.tokenize([query]).to(device)
-#
-#     # Prepare a list to store similarities as well as images.
-#     similarities = []
-#     similarityExcl = []
-#     # Exclusively only stores the numbers for the similarities
-#
-#     # # Folder containing the images
-#     # folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
-#
-#     # Counter for number of images processed
-#     counter = 0
-#
-#     filenames = []
-#     for image_file in os.listdir(folder_path):
-#         # Full path to the image file
-#         image_path = os.path.join(folder_path, image_file)
-#
-#         # Skip if not a file or not an image
-#         print(image_path)
-#         if not os.path.isfile(image_path) or not (image_file.endswith(".png") or image_file.endswith(".jpg")):
-#             continue
-#
-#         # image_path = os.path.join(settings.MEDIA_URL, 'Images')
-#         image = preprocess(Image.open(image_path)).unsqueeze(0).to(device)
-#
-#         # Calculate features
-#         with torch.no_grad():
-#             text_features = model.encode_text(text).cpu().numpy()
-#             image_features = model.encode_image(image).cpu().numpy()
-#
-#         # Compute the similarity
-#         similarity = cosine_similarity(text_features, image_features)[0][0]
-#         similarities.append((image_path, similarity))
-#
-#     # Sort the results by similarity in descending order
-#     similarities.sort(key=lambda x: x[1], reverse=True)
-#     print(similarities)
-#
-#     # Print the results
-#     for image_path, similarity in similarities:
-#         print(f"Image: {image_path}, Similarity: {similarity}")
-#         filenames.append(image_path)
-#         similarityExcl.append("{:.3f}".format(similarity * 100) + "%")
-#
-#     filename_similarity_zip = zip(filenames, similarityExcl)
-#     context = {'filenames': filename_similarity_zip, "query": query}
-#     return render(request, 'home.html', context)
-
 def send_result(request):
     # TODO Fix send_result not being found
     print("Sent response to server.")
@@ -183,46 +101,65 @@ def send_result(request):
     print(response)
     return JsonResponse({'result': response.text})
 
-# TODO find_similar has to be implemented properly.
-def find_similar(request, image_id, similar_images=None):
-    # Load the model
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model, preprocess = clip.load('ViT-B/32', device=device)
+def find_similar(request):
+    image_id = request.POST.get('likeID')
+    print("(Find Similar): Image ID, ", image_id)
 
-    # Load the query image
-    query_image = preprocess(Image.open("path_to_your_query_image.jpg")).unsqueeze(0).to(device)
+    if image_id is None:
+        image_id = request.session.get('image_id', '')
 
-    # Calculate the features of the query image
-    with torch.no_grad():
-        query_features = model.encode_image(query_image)
+    # Directory of images
+    image_dir = 'Images'
 
-    # Prepare a list to store the filenames and similarities
-    image_similarities = []
+    # Directory to save image features
+    features_dir = 'Features'
 
-    # Go through all images in the directory
-    for filename in os.listdir('path_to_your_image_directory'):
-        if filename.endswith(".jpg") or filename.endswith(".png"):
-            # Load and preprocess the image
-            image = preprocess(Image.open(os.path.join('path_to_your_image_directory', filename))).unsqueeze(0).to(device)
+    # Load the image features from the provided image_id
+    image_features_path = os.path.join(features_dir, image_id + '.pt')
 
-            # Calculate the features of the image
-            with torch.no_grad():
-                image_features = model.encode_image(image)
+    if not os.path.exists(image_features_path):
+        return -1
 
-            # Calculate the similarity between the query image and the image
-            similarity = (query_features @ image_features.T).item()
+    image_features = torch.load(image_features_path)
 
-            # Add the filename and similarity to the list
-            image_similarities.append((filename, similarity))
+    results = []
 
-    # Sort the images by similarity
-    image_similarities.sort(key=lambda x: x[1], reverse=True)
+    print("Looping over all images to compare to selected image features.")
+    # Loop over all images in the directory in sorted order
+    for image_file in sorted(os.listdir(image_dir)):
+        features_path = os.path.join(features_dir, image_file + '.pt')
 
-    # Print the images sorted by similarity
-    for filename, similarity in image_similarities:
-        print(f'{filename}: {similarity}')
+        # Check if features already exist
+        if os.path.exists(features_path):
+            # Load the image features from disk
+            other_image_features = torch.load(features_path)
 
-    return JsonResponse({'similar_images': similar_images})
+            # Calculate the dot product (similarity) between the text and image embeddings
+            similarity = (image_features * other_image_features).sum()
+
+            image_path = os.path.join(folder_path, image_file)
+            similarity_pct = "{:.3f}".format(similarity * 100) + "%"
+
+            # Store the results
+            results.append((image_path, similarity.item(), similarity_pct))
+
+    # Sort the results by similarity in descending order
+    results.sort(key=lambda x: x[1], reverse=True)
+
+    # Split the sorted results into separate lists
+    filenames, _, similarityExcl = zip(*results)
+
+    filename_similarity_zip = list(zip(filenames, similarityExcl))
+
+    # Pagination
+    paginator = Paginator(filename_similarity_zip, imagesPerPage) # Show 100 images per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    page_amount = paginator.num_pages
+
+    context = {'filenames': page_obj, 'total_pages': page_amount, 'image_id': image_id}
+    print("Returning results.")
+    return render(request, 'home.html', context)
 
 # TODO find_similar_histogram needs to be properly implemented, requires button in front-end as well.
 def find_similar_histogram(request):
@@ -269,115 +206,109 @@ def find_similar_histogram(request):
     for filename, similarity in image_similarities[:5]:
         print(f'{filename}: {similarity}')
 
+# TODO: Fix combined clip, does not function like intended.
 def combined_clip(request):
-    print("Combined clip function called")
-    print()
-    # Load the model
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model, preprocess = clip.load("ViT-B/32", device=device)
+    query = request.POST.get('query')
+    print("Query: ", query)
+    image_id = request.POST.get('likeID')
+    print("Image ID: ", image_id)
 
-    # Prepare the text
-    text = clip.tokenize(["A dog on a skateboard"]).to(device)
+    if query is not None:
+        # Store the query in the session
+        request.session['query'] = query
+    else:
+        # Fetch the query from the session
+        query = request.session.get('query', '')
 
-    # Prepare the image
-    image = preprocess(Image.open("dog_on_skateboard.jpg")).unsqueeze(0).to(device)
+    filenames = []
+    similarityExcl = []
 
-    # Calculate features
-    with torch.no_grad():
+    print("Tokenizing text.")
+    # Split the query string on commas to get a list of queries
+    text_queries = [q.strip() for q in query.split(',')]
+    # Join the queries with the '[SEP]' token
+    text_query = ' [SEP] '.join(text_queries)
+    print("Query: ", text_query)
+    text = tokenizer(text_query)
+
+    # Directory of images
+    image_dir = 'Images'
+
+    # Directory to save image features
+    features_dir = 'Features'
+
+    print("Extracting text features.")
+    with torch.no_grad(), torch.cuda.amp.autocast():
         text_features = model.encode_text(text)
-        image_features = model.encode_image(image)
+        text_features /= text_features.norm(dim=-1, keepdim=True)
 
-    # Combine the features
-    combined_features = (text_features + image_features) / 2  # Here we average the features, but you can combine them in other ways
+    # Check if an image id was provided
+    if image_id is not None:
+        # Load the pre-computed features for the image
+        features_path = os.path.join(features_dir, image_id + '.pt')
+        if os.path.exists(features_path):
+            # Load the image features from disk
+            image_features = torch.load(features_path)
 
-    # Compare to database
-    # This depends on how your database is structured, but you would compare `combined_features` to the features of each image in the database
-    # For example, if `database_features` is a 2D tensor where each row is the features of one image:
-    similarities = torch.nn.functional.cosine_similarity(combined_features, database_features)
+            print(f"image_features shape: {image_features.shape}")
+            print(f"text_features shape: {text_features.shape}")
 
-    # Sort by similarity
-    ranked_indices = torch.argsort(similarities, descending=True)
+            # Calculate the dot product (similarity) between the text and image embeddings
+            text_features = (image_features * text_features).sum(dim=-1)
 
-    # Now `ranked_indices[0]` is the index of the most similar image, `ranked_indices[1]` is the second most similar, and so on
+    results = []
+    counter = 0
 
-# def L2S(x1, y1, x2, y2):
-#     return (x1 - x2) ** 2 + (y1 - y2) ** 2
-#
-# def UpdateScores(X, Y, scores, display, likeID, alpha):
-#     for i in range(0, X.size):
-#         PF = math.exp(-L2S(X[likeID], Y[likeID], X[i], Y[i]) / alpha)
-#         NF = 0
-#         for j in display:
-#             if j != likeID:
-#                 NF += math.exp(-L2S(X[j], Y[j], X[i], Y[i]) / alpha)
-#         scores[i] = scores[i] * PF / NF
-#
-# def DrawDataANdScores(X, Y, scores, display, likeID):
-#     colors = []
-#     for i in range(0, X.size):
-#         c = int(scores[i] * 255)
-#         if i == likeID: colors.append("red")
-#         elif i in display: colors.append("blue")
-#         else: colors.append('#%02x%02x%02x' % (0, 255 - c, 0))
+    print("Looping over all images to compare to text features.")
+    # Loop over all images in the directory in sorted order
+    for image_file in sorted(os.listdir(image_dir)):
+        features_path = os.path.join(features_dir, image_file + '.pt')
 
-# TODO Implement bayesian feedback loop.
-# def feedback_loop(request):
-#     print("Feedback update called.")
-#     positive_image = request.POST.get('lastSelected', "")
-#     print("Positive example: ", positive_image)
-#
-#     # TODO Precompute all the distances with matrix multiplication, is 100x faster than iterating.
-#     # TODO Change positive_image to correct solution later.
-#
-#     # TODO Negative examples can be 20-30 images, does not have to be all of the rest of the images.
-#     context = {'filenames': positive_image}
-#     return render(request, 'home.html', context)
+        # Check if features already exist
+        if os.path.exists(features_path):
+            # Load the image features from disk
+            image_features = torch.load(features_path)
+        else:
+            # Load and preprocess the image
+            image = preprocess(Image.open(os.path.join(image_dir, image_file))).unsqueeze(0)
 
-from django.shortcuts import render
-import torch
-import numpy as np
-import os
-import math
+            # Get the embeddings for the image
+            image_features = model.encode_image(image)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+
+            # Save the image features to disk
+            torch.save(image_features, features_path)
+
+        # Calculate the dot product (similarity) between the text and image embeddings
+        similarities = (image_features * text_features).sum(dim=-1)
+
+        for query, similarity in zip(text_queries, similarities):
+            image_path = os.path.join(folder_path, image_file)
+            similarity_pct = "{:.3f}".format(similarity * 100) + "%"
+
+            # Store the results
+            results.append((image_path, similarity.item(), similarity_pct))
+
+    # Sort the results by similarity in descending order
+    results.sort(key=lambda x: x[1], reverse=True)
+
+    # Split the sorted results into separate lists
+    filenames, _, similarityExcl = zip(*results)
+
+    filename_similarity_zip = list(zip(filenames, similarityExcl))
+
+    # Pagination
+    paginator = Paginator(filename_similarity_zip, imagesPerPage) # Show 100 images per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    page_amount = paginator.num_pages
+
+    context = {'filenames': page_obj, 'total_pages': page_amount, 'query': query}
+    print("Returning results.")
+    return render(request, 'home.html', context)
 
 def L2S(feature1, feature2):
     return np.sum((feature1 - feature2) ** 2)
-
-from annoy import AnnoyIndex
-import time
-# Speed up the process by using an approximate nearest neighbors search algorithm instead of computing all pairwise distances.
-# Constructs an index with Annoy and then queries it to get the distance between vectors
-# def UpdateScores(features, scores, display, likeID, alpha):
-#     start_time = time.time()
-#     # Convert lists to numpy arrays for vectorized operations
-#     features = np.array(features)
-#     scores = np.array(scores)
-#
-#     # Compute the squared L2 norm between the liked feature and all other features
-#     diff = features - features[likeID]
-#     L2_norms = np.sum(diff ** 2, axis=1)
-#
-#     # Compute the positive factor (PF)
-#     PF = np.exp(-L2_norms / alpha)
-#
-#     # Compute the negative factor (NF)
-#     NF = np.zeros_like(scores)
-#     for j in display:
-#         if j != likeID:
-#             diff = features - features[j]
-#             L2_norms = np.sum(diff ** 2, axis=1)
-#             NF += np.exp(-L2_norms / alpha)
-#
-#     # Update the scores
-#     scores = scores * PF / (NF + 1e-9)  # add a small constant to avoid division by zero
-#     end_time = time.time()
-#     execution_time = end_time - start_time
-#     print(f"The function took {execution_time} seconds to execute.")
-#     return scores
-
-import numpy as np
-from multiprocessing import Pool
-
-import torch
 
 def UpdateScores(features, scores, display, likeID, alpha):
     start_time = time.time()
@@ -414,14 +345,18 @@ def UpdateScores(features, scores, display, likeID, alpha):
 
     return scores
 
-
 def feedback_loop(request):
     # Directory of features
     image_dir = 'Images'
     features_dir = 'Features'
     # Fetch the ID of the liked image from the request
-    likeID = int(request.POST.get('likeID')[:-4])
-    print(likeID)
+    likeID = request.POST.get('likeID')[:-4]
+    print("(Feedback Loop): Image ID, ", likeID)
+
+    likeID = int(likeID)
+
+    if likeID is None:
+        likeID = request.session.get('image_id', '')
 
     # Load all the feature vectors into memory
     features = []
@@ -505,7 +440,6 @@ def show_surrounding():
 def search_lion(request):
     query = request.POST.get('query')
     if query is not None:
-        print("Query: ", query)
         # Store the query in the session
         request.session['query'] = query
     else:
@@ -516,9 +450,12 @@ def search_lion(request):
     similarityExcl = []
 
     print("Tokenizing text.")
-    # Text queries
-    text_queries = [query]
-    text = tokenizer(text_queries)
+    # Split the query string on commas to get a list of queries
+    text_queries = [q.strip() for q in query.split(',')]
+    # Join the queries with the '[SEP]' token
+    text_query = ' [SEP] '.join(text_queries)
+    print("Query: ", text_query)
+    text = tokenizer(text_query)
 
     # Directory of images
     image_dir = 'Images'
@@ -578,6 +515,6 @@ def search_lion(request):
     page_obj = paginator.get_page(page_number)
     page_amount = paginator.num_pages
 
-    context = {'filenames': page_obj, 'total_pages': page_amount}
+    context = {'filenames': page_obj, 'total_pages': page_amount, 'query': query}
     print("Returning results.")
     return render(request, 'home.html', context)

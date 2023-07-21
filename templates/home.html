@@ -50,29 +50,40 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <div class="">
-            <a href="/" class="btn btn-primary ml-2 my-sm-0">Home</a>
+            <a href="/" class="btn btn-primary">Home</a>
 {#            TODO When selecting image, see also CSV file information about it when hovering over. #}
             <button id="findSimilarHistogramButton" class="btn btn-primary ml-1 my-sm-0">Find Similar Images (Histogram)</button>
-            <button id="findSimilarCLIPButton" class="btn btn-primary ml-1 my-sm-0">Find Similar Images (CLIP)</button>
+{#            <button id="findSimilarCLIPButton" class="btn btn-primary ml-1 my-sm-0">Find Similar Images (CLIP)</button>#}
         </div>
+
+        <form id="searchImageHistogramForm" method="post" action="{% url 'find_similar_histogram' %}">
+            {% csrf_token %}
+            <input type="hidden" id="likeID" name="likeID" value="">
+            <button type="submit" id="searchImageButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (Histogram)</button>
+        </form>
+
+        <form id="searchImageForm" method="post" action="{% url 'find_similar' %}">
+            {% csrf_token %}
+            <input type="hidden" id="likeID" name="likeID" value={{ likeID }}>
+            <button type="submit" id="searchImageButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images</button>
+        </form>
 
         <form id="feedbackForm" method="post" action="{% url 'feedback_loop' %}">
             {% csrf_token %}
-            <input type="hidden" id="likeID" name="likeID" value="">
+            <input type="hidden" id="likeID" name="likeID" value={{ likeID }}>
             <input type="submit" id="feedbackImageButton" class="btn btn-primary ml-2 my-sm-0" value="Bayesian Update">
         </form>
 
-{#        TODO Implement reset button #}
         <form id="resetForm" method="post" action="{% url 'reset_scores' %}">
             {% csrf_token %}
-            <input type="submit" id="resetFeedbackButton" class="btn btn-primary ml-2 my-sm-0" value="Reset">
+            <input type="submit" id="resetFeedbackButton" class="btn btn-danger ml-2 my-sm-0" value="Reset">
         </form>
 
         <div class="navbar-nav mx-auto">
             <div class="myFormattedText">
 {#                 TODO Only format "Text Query" and "Last Selected Image" instead of entire text to make visibility easier."#}
                 {% if query %}
-                    Query: <span>{{ query }}</span>
+{#                    Query: <span>{{ query }}</span>#}
                     Image: <span id="lastSelected"></span>
                 {% else %}
                     Image: <span id="lastSelected"></span>
@@ -82,15 +93,17 @@
 
         <form method="post" action="{% url 'search_clip' %}" class="d-flex form-inline">
             {% csrf_token %}
-            <input name="query" id="searchClipInput" class="form-control mr-sm-2 mx-1" type="text" placeholder="Text Search" aria-label="Text Search">
+            <input type="hidden" id="likeID" name="likeID" value="">
+            <input name="query" id="searchClipInput" class="form-control mr-sm-2 mx-1" type="text" placeholder="Text Search" aria-label="Text Search" value="{{ query }}">
             <button type="submit" id="searchClipButton" class="btn btn-success mr-1 my-sm-0">Text Search</button>
         </form>
 
-{#        <form method="post" action="{% url 'combined_clip' %}" class="d-flex form-inline">#}
-{#            {% csrf_token %}#}
-{#            <input name="query" id="combinedClipText" class="form-control mr-sm-2 my-1 mx-1" type="text" placeholder="Combined Search" aria-label="Text Search">#}
+        <form id="combinedForm" method="post" action="{% url 'combined_clip' %}">
+            {% csrf_token %}
+            <input type="hidden" id="searchClipInput" name="searchClipInput" value="">
+            <input type="hidden" id="likeID" name="likeID" value="">
             <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search</button>
-{#        </form>#}
+        </form>
 
         <button id="sendResultButton" class="btn btn-danger ml-1 my-sm-0">Send selected Image</button>
     </div>
@@ -152,9 +165,22 @@
         document.getElementById(filename).classList.add('highlighted');
         document.getElementById('lastSelected').innerText = filename.slice(-9);
         // Set the form value
-        document.getElementById('likeID').value = filename.slice(-9);
+        let imageId = filename.slice(-9);
+        document.getElementById('likeID').value = imageId;
+        // Update the likeID value in the form
+        document.getElementById('searchImageForm').elements['likeID'].value = imageId;
+        document.getElementById('feedbackForm').elements['likeID'].value = imageId;
     }
 
+    document.getElementById('combinedClipButton').onclick = function() {
+        // Get the values from other forms
+        const searchClipInputValue = document.getElementById('searchClipInput').value;
+        const feedbackLikeIDValue = document.getElementById('likeID').value;
+
+        // Set the values in the combinedForm
+        document.getElementById('combinedForm').elements['searchClipInput'].value = searchClipInputValue;
+        document.getElementById('feedbackForm').elements['likeID'].value = feedbackLikeIDValue;
+    };
 
     document.getElementById('searchClipButton').onclick = function() {
         const input = document.getElementById('searchClipInput');
