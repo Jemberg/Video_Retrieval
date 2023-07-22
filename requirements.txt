@@ -1,0 +1,11 @@
+Django
+Pillow
+open-clip
+scipy
+django-paginator
+torch
+numpy
+opencv-python
+pickle5
+requests
+clip-anytorch
