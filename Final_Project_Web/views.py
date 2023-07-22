@@ -14,13 +14,15 @@ from django.shortcuts import render, redirect
 from django.views.decorators.cache import cache_page
 from django.core.cache import cache
 from django.http import HttpResponse
-
+from scipy.spatial import distance
+from sklearn_som.som import SOM
 from django.conf import settings
 from django.core.paginator import Paginator
+
 import torch
 import numpy as np
-from sklearn_som.som import SOM
-
+import cv2
+import numpy as np
 import pickle
 import os
 
@@ -28,15 +30,17 @@ folder_path = settings.MEDIA_ROOT
 
 imagesPerPage = 250
 
+print("Cache has been cleared before startup.")
+cache.clear()
 # Load the model and tokenizer when the module is loaded
 print("Loading model and tokenizer.")
 model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
 tokenizer = open_clip.get_tokenizer('ViT-B-32')
 print("Loading done.")
 
-@cache_page(60 * 15)
+# TODO Reactivate caching for production build.
+# @cache_page(60 * 15)
 def home(request):
-
     # Directory of features
     features_dir = 'Features'
     clusters_file = 'clusters.pkl'
@@ -63,7 +67,6 @@ def home(request):
 
             # Append the corresponding image filename to the filenames list
             image_file = feature_file.replace('.pt', '')
-            filenames.append(image_file)
             print("Calculating SOM: ", counter)
             counter += 1
 
@@ -74,7 +77,8 @@ def home(request):
         n_features = data.shape[1]
 
         # Initialize a SOM with the correct number of features
-        som = SOM(m=25, n=40, dim=n_features)
+        # m = rows, n = columns, big difference in content distribution.
+        som = SOM(m=23, n=11, dim=n_features)
 
         # Fit the SOM to the data and get the cluster assignments
         cluster_assignments = som.fit_predict(data)
@@ -88,6 +92,8 @@ def home(request):
         # Save the cluster assignments for future use
         with open(clusters_file, 'wb') as f:
             pickle.dump(filename_cluster_zip, f)
+
+        filename_cluster_zip = [(os.path.join(settings.MEDIA_URL, fn), cluster) for fn, cluster in filename_cluster_zip]
 
     # Pagination
     paginator = Paginator(filename_cluster_zip, imagesPerPage)
@@ -177,12 +183,40 @@ def find_similar(request):
     return render(request, 'home.html', context)
 
 # TODO find_similar_histogram needs to be properly implemented, requires button in front-end as well.
-def find_similar_histogram(request):
-    # Specify the directory of your images and the path to your query image
-    directory = "path_to_your_image_directory"
-    query_image_path = "path_to_your_query_image.jpg"
 
-    # Specify the number of bins per channel for the histogram
+import os
+import cv2
+import numpy as np
+import pickle
+from scipy.spatial import distance
+from django.core.paginator import Paginator
+from django.shortcuts import render
+from django.conf import settings
+
+def calculate_histogram(image_file, image_dir, bins):
+    # Load the image
+    image = cv2.imread(os.path.join(image_dir, image_file))
+
+    # Compute the histogram of the image
+    hist = cv2.calcHist([image], [0, 1, 2], None, bins, [0, 256, 0, 256, 0, 256])
+
+    # Normalize the histogram
+    hist = cv2.normalize(hist, hist).flatten()
+
+    return hist
+
+def search_histogram(request):
+    query_image_path = request.POST.get('likeID')
+    print("Query image path: ", query_image_path)
+    if query_image_path is not None:
+        request.session['query'] = query_image_path
+    else:
+        query_image_path = request.session.get('query', '')
+
+    query_image_path = os.path.join(os.path.abspath("Images"), query_image_path)
+    print("Absolute query image path: ", query_image_path)
+
+    # Number of bins per channel for the histogram
     bins = [8, 8, 8]
 
     # Load the query image and compute its histogram
@@ -192,36 +226,54 @@ def find_similar_histogram(request):
     # Normalize the histogram
     query_hist = cv2.normalize(query_hist, query_hist).flatten()
 
-    # Prepare a list to store the filenames and similarities
-    image_similarities = []
+    image_dir = 'Images'
+    results = []
 
-    # Go through all images in the directory
-    for filename in os.listdir(directory):
-        if filename.endswith(".jpg") or filename.endswith(".png"):
-            # Load the image
-            image = cv2.imread(os.path.join(directory, filename))
+    histograms_path = os.path.join(image_dir, 'histograms.pickle')
 
-            # Compute the histogram of the image
-            hist = cv2.calcHist([image], [0, 1, 2], None, bins, [0, 256, 0, 256, 0, 256])
+    if os.path.exists(histograms_path):
+        # Load histograms from file
+        with open(histograms_path, 'rb') as f:
+            histograms = pickle.load(f)
+    else:
+        # Calculate histograms and store them in a file
+        histograms = {}
 
-            # Normalize the histogram
-            hist = cv2.normalize(hist, hist).flatten()
+        for image_file in sorted(os.listdir(image_dir)):
+            hist = calculate_histogram(image_file, image_dir, bins)
+            histograms[image_file] = hist
 
-            # Compute the cosine similarity between the query image's histogram
-            # and this image's histogram
-            similarity = 1 - distance.cosine(query_hist, hist)
+        with open(histograms_path, 'wb') as f:
+            pickle.dump(histograms, f)
 
-            # Add the filename and similarity to the list
-            image_similarities.append((filename, similarity))
+    for image_file, hist in histograms.items():
+        # Compute the cosine similarity between the query image's histogram and this image's histogram
+        similarity = 1 - distance.cosine(query_hist, hist)
 
-    # Sort the images by similarity
-    image_similarities.sort(key=lambda x: x[1], reverse=True)
+        image_path = os.path.join(settings.MEDIA_URL, image_file)
+        similarity_pct = "{:.3f}".format(similarity * 100) + "%"
 
-    # Print the top 5 images sorted by similarity
-    for filename, similarity in image_similarities[:5]:
-        print(f'{filename}: {similarity}')
+        # Store the results
+        results.append((image_path, similarity, similarity_pct))
 
-# TODO: Fix combined clip, does not function like intended.
+    # Sort the results by similarity in descending order
+    results.sort(key=lambda x: x[1], reverse=True)
+
+    # Split the sorted results into separate lists
+    filenames, _, similarityExcl = zip(*results)
+
+    filename_similarity_zip = list(zip(filenames, similarityExcl))
+
+    # Pagination
+    paginator = Paginator(filename_similarity_zip, imagesPerPage) # Show 100 images per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    page_amount = paginator.num_pages
+
+    context = {'filenames': page_obj, 'total_pages': page_amount, 'query': query_image_path}
+    print("Returning results.")
+    return render(request, 'home.html', context)
+
 def combined_clip(request):
     query = request.POST.get('searchClipInput')
     image_id = request.POST.get('likeID')

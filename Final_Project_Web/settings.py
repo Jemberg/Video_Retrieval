@@ -29,7 +29,9 @@ DEBUG = True
 ALLOWED_HOSTS = ['vr.jemberg.com', "127.0.0.1"]
 # Must start with HTTPS or HTTP, has to have scheme in front.
 CSRF_TRUSTED_ORIGINS = ['https://vr.jemberg.com', "http://127.0.0.1"]
-
+# Meant for using CDN cache for image retrieval.
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Application definition
 
 INSTALLED_APPS = [

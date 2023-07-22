@@ -60,7 +60,7 @@
             <button type="submit" id="showSurroundingButton" class="btn btn-primary ml-2 my-sm-0">Show Surrounding Images</button>
         </form>
 
-        <form id="searchImageHistogramForm" method="post" action="{% url 'find_similar_histogram' %}">
+        <form id="searchImageHistogramForm" method="post" action="{% url 'search_histogram' %}">
             {% csrf_token %}
             <input type="hidden" id="likeID" name="likeID" value="">
             <button type="submit" id="searchImageButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (Histogram)</button>
@@ -176,6 +176,7 @@
         document.getElementById('feedbackForm').elements['likeID'].value = imageId;
         document.getElementById('combinedForm').elements['likeID'].value = imageId;
         document.getElementById('showSurroundingForm').elements['likeID'].value = imageId;
+        document.getElementById("searchImageHistogramForm").elements["likeID"].value = imageId;
         {#    TODO Implement checking if Image is selected before sending request to server. #}
     }
 
