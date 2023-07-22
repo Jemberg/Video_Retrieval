@@ -11,6 +11,9 @@ from django.http import JsonResponse
 from open_clip import tokenizer
 from scipy.spatial import distance
 from django.shortcuts import render, redirect
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
+from django.http import HttpResponse
 
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -31,10 +34,9 @@ model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrai
 tokenizer = open_clip.get_tokenizer('ViT-B-32')
 print("Loading done.")
 
-from django.conf import settings
-from django.templatetags.static import static
-
+@cache_page(60 * 15)
 def home(request):
+
     # Directory of features
     features_dir = 'Features'
     clusters_file = 'clusters.pkl'

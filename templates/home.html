@@ -127,8 +127,9 @@
                 <a class="page-link" href="?page=1" tabindex="-1" aria-disabled="true">First</a>
             </li>
             <li class="page-item {% if filenames.number == 1 %}disabled{% endif %}">
-                <a class="page-link" href="?page={{ filenames.number|add:'-1' }} }}" aria-label="Previous">
-                    <span aria-hidden="true">&laquo;</span>
+                <a class="page-link" href="?page={{ filenames.number|add:'-1' }}" aria-label="Previous">
+
+                <span aria-hidden="true">&laquo;</span>
                 </a>
             </li>
             <li class="page-item active">
