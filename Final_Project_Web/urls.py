@@ -3,7 +3,7 @@ from Final_Project_Web import views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
-from .views import combined_clip, feedback_loop, send_result, search_lion, reset_scores, find_similar, find_similar_histogram
+from .views import combined_clip, feedback_loop, send_result, search_lion, reset_scores, find_similar, find_similar_histogram, show_surrounding
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -13,7 +13,8 @@ urlpatterns = [
     path("feedback_loop", feedback_loop, name="feedback_loop"),
     path("reset_scores", reset_scores, name="reset_scores"),
     path("find_similar", find_similar, name="find_similar"),
-    path("find_similar_histogram", find_similar_histogram, name="find_similar_histogram")
+    path("find_similar_histogram", find_similar_histogram, name="find_similar_histogram"),
+    path("show_surrounding", show_surrounding, name="show_surrounding")
     # path('send_result/<str:image_name>/', views.send_result, name='send_result'),
     # path('find_similar/<str:image_id>/', views.find_similar, name='find_similar'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -111,10 +111,16 @@ def send_result(request):
 
 def find_similar(request):
     image_id = request.POST.get('likeID')
-    print("(Find Similar): Image ID, ", image_id)
+
+    if image_id is not None:
+        # Store the image_id in the session
+        request.session['image_id'] = image_id
+    else:
+        # Fetch the image_id from the session
+        image_id = request.session.get('image_id', None)
 
     if image_id is None:
-        image_id = request.session.get('image_id', '')
+        return HttpResponse("Image ID not found.", status=404)
 
     # Directory of images
     image_dir = 'Images'
@@ -126,7 +132,7 @@ def find_similar(request):
     image_features_path = os.path.join(features_dir, image_id + '.pt')
 
     if not os.path.exists(image_features_path):
-        return -1
+        return HttpResponse("Image features file not found.", status=404)
 
     image_features = torch.load(image_features_path)
 
@@ -218,16 +224,24 @@ def find_similar_histogram(request):
 # TODO: Fix combined clip, does not function like intended.
 def combined_clip(request):
     query = request.POST.get('searchClipInput')
-    print("Query: ", query)
     image_id = request.POST.get('likeID')
-    print("Image ID: ", image_id)
 
     if query is not None:
         # Store the query in the session
         request.session['query'] = query
     else:
         # Fetch the query from the session
-        query = request.session.get('query', '')
+        query = request.session.get('query', None)
+
+    if image_id is not None:
+        # Store the image_id in the session
+        request.session['image_id'] = image_id
+    else:
+        # Fetch the image_id from the session
+        image_id = request.session.get('image_id', None)
+
+    if query is None and image_id is None:
+        return HttpResponse("Query and Image ID both not found.", status=404)
 
     filenames = []
     similarityExcl = []
@@ -430,7 +444,6 @@ def feedback_loop(request):
     page_amount = paginator.num_pages
 
     context = {'filenames': page_obj, 'total_pages': page_amount}
-    # TODO Pagination does not work, needs to still be fixed.
     print("Done with Bayesian update.")
     return render(request, 'home.html', context)
 
@@ -444,9 +457,51 @@ def reset_scores(request):
         os.remove(scores_path)
     return redirect('home')
 
-def show_surrounding():
-    # TODO Show 50 images before and 50 after the one selected.
-    return 0
+def show_surrounding(request):
+    image_id = request.POST.get('likeID')
+
+    if image_id is not None:
+        # Store the image_id in the session
+        request.session['image_id'] = image_id
+    else:
+        # Fetch the image_id from the session
+        image_id = request.session.get('image_id', None)
+
+    if image_id is None:
+        return HttpResponse("Image ID not found.", status=404)
+
+    # Directory of images
+    image_dir = 'Images'
+
+    # Get all images in sorted order
+    all_images = sorted(os.listdir(image_dir))
+
+    try:
+        # Find the index of the selected image in the list
+        image_index = all_images.index(image_id)
+    except ValueError:
+        # If the image_id is not found in the list, return an error message
+        return HttpResponse('Image not found', status=404)
+
+    # Find the start and end indices for the surrounding images
+    start_index = max(0, image_index - 50)
+    end_index = min(len(all_images), image_index + 51)
+
+    # Select the surrounding images
+    surrounding_images = all_images[start_index:end_index]
+
+    # Create image paths with index
+    image_paths_with_index = [(os.path.join(settings.MEDIA_URL, img), idx) for idx, img in enumerate(surrounding_images, start=start_index)]
+
+    # Paginate the images
+    paginator = Paginator(image_paths_with_index, imagesPerPage)  # Show 100 images per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    page_amount = paginator.num_pages
+
+    context = {'filenames': page_obj, 'total_pages': page_amount, 'image_id': image_id}
+    print("Returning results.")
+    return render(request, 'home.html', context)
 
 def search_lion(request):
     query = request.POST.get('query')
