@@ -16,7 +16,7 @@ urlpatterns = [
     path("find_similar_histogram", find_similar_histogram, name="find_similar_histogram")
     # path('send_result/<str:image_name>/', views.send_result, name='send_result'),
     # path('find_similar/<str:image_id>/', views.find_similar, name='find_similar'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

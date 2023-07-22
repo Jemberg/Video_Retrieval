@@ -25,8 +25,10 @@ SECRET_KEY = 'django-insecure-z!8dvck*888p^^+rqbq*h7n!6z-otx+bwrcp(x-py(*z5ds2@q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['55b59b839939-3982095618953669946.ngrok-free.app', "127.0.0.1"]
-
+# Has to just be bare domain.
+ALLOWED_HOSTS = ['vr.jemberg.com', "127.0.0.1"]
+# Must start with HTTPS or HTTP, has to have scheme in front.
+CSRF_TRUSTED_ORIGINS = ['https://vr.jemberg.com', "http://127.0.0.1"]
 
 # Application definition
 
@@ -111,8 +113,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-MEDIA_URL = os.path.join(BASE_DIR, '')
-MEDIA_ROOT = os.path.join(BASE_DIR, '')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'Images')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

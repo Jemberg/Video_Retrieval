@@ -10,6 +10,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from open_clip import tokenizer
 from scipy.spatial import distance
+from django.shortcuts import render, redirect
 
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -20,16 +21,18 @@ from sklearn_som.som import SOM
 import pickle
 import os
 
-dataset_path = os.path.join(settings.MEDIA_ROOT, 'Images')
-folder_path = os.path.join(settings.MEDIA_ROOT, 'Images/')
+folder_path = settings.MEDIA_ROOT
 
-imagesPerPage = 1000
+imagesPerPage = 250
 
 # Load the model and tokenizer when the module is loaded
 print("Loading model and tokenizer.")
 model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
 tokenizer = open_clip.get_tokenizer('ViT-B-32')
 print("Loading done.")
+
+from django.conf import settings
+from django.templatetags.static import static
 
 def home(request):
     # Directory of features
@@ -45,6 +48,8 @@ def home(request):
     if os.path.exists(clusters_file):
         with open(clusters_file, 'rb') as f:
             filename_cluster_zip = pickle.load(f)
+        # Append the MEDIA_URL to all filenames to get the URLs
+        filename_cluster_zip = [(os.path.join(settings.MEDIA_URL, fn), cluster) for fn, cluster in filename_cluster_zip]
     else:
         # Loop over all feature files in the directory
         for feature_file in sorted(os.listdir(features_dir)):
@@ -56,7 +61,8 @@ def home(request):
 
             # Append the corresponding image filename to the filenames list
             image_file = feature_file.replace('.pt', '')
-            filenames.append(os.path.join(settings.MEDIA_URL, 'Images', image_file))
+            filenames.append(image_file)
+            print("Calculating SOM: ", counter)
             counter += 1
 
         # Stack all the feature vectors into a 2D numpy array
@@ -91,9 +97,9 @@ def home(request):
     return render(request, 'home.html', context)
 
 def send_result(request):
-    # TODO Fix send_result not being found
     print("Sent response to server.")
     # key_i = (image_name[-9:])[:5]
+    # TODO: Edit object to include selected image.
     my_obj = {'team': "Martin", 'item': "21354"}
     # Query that worked: https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php?team=Martin&item=24563
     # Query to check on: https://siret.ms.mff.cuni.cz/lokoc/VBSEval/eval.php
@@ -137,11 +143,12 @@ def find_similar(request):
             # Calculate the dot product (similarity) between the text and image embeddings
             similarity = (image_features * other_image_features).sum()
 
-            image_path = os.path.join(folder_path, image_file)
+            # Create the image URL relative to the MEDIA_URL
+            image_url = os.path.join(settings.MEDIA_URL, image_file)
             similarity_pct = "{:.3f}".format(similarity * 100) + "%"
 
             # Store the results
-            results.append((image_path, similarity.item(), similarity_pct))
+            results.append((image_url, similarity.item(), similarity_pct))
 
     # Sort the results by similarity in descending order
     results.sort(key=lambda x: x[1], reverse=True)
@@ -152,7 +159,7 @@ def find_similar(request):
     filename_similarity_zip = list(zip(filenames, similarityExcl))
 
     # Pagination
-    paginator = Paginator(filename_similarity_zip, imagesPerPage) # Show 100 images per page
+    paginator = Paginator(filename_similarity_zip, imagesPerPage)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     page_amount = paginator.num_pages
@@ -208,7 +215,7 @@ def find_similar_histogram(request):
 
 # TODO: Fix combined clip, does not function like intended.
 def combined_clip(request):
-    query = request.POST.get('query')
+    query = request.POST.get('searchClipInput')
     print("Query: ", query)
     image_id = request.POST.get('likeID')
     print("Image ID: ", image_id)
@@ -243,18 +250,14 @@ def combined_clip(request):
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
     # Check if an image id was provided
+    text_image_similarity = None
     if image_id is not None:
-        # Load the pre-computed features for the image
         features_path = os.path.join(features_dir, image_id + '.pt')
         if os.path.exists(features_path):
-            # Load the image features from disk
             image_features = torch.load(features_path)
-
             print(f"image_features shape: {image_features.shape}")
             print(f"text_features shape: {text_features.shape}")
-
-            # Calculate the dot product (similarity) between the text and image embeddings
-            text_features = (image_features * text_features).sum(dim=-1)
+            text_image_similarity = (image_features * text_features).sum(dim=-1)
 
     results = []
     counter = 0
@@ -281,9 +284,12 @@ def combined_clip(request):
 
         # Calculate the dot product (similarity) between the text and image embeddings
         similarities = (image_features * text_features).sum(dim=-1)
+        if text_image_similarity is not None:
+            similarities += text_image_similarity
 
         for query, similarity in zip(text_queries, similarities):
-            image_path = os.path.join(folder_path, image_file)
+            # Create the image URL relative to the MEDIA_URL
+            image_path = os.path.join(settings.MEDIA_URL, image_file)
             similarity_pct = "{:.3f}".format(similarity * 100) + "%"
 
             # Store the results
@@ -315,6 +321,12 @@ def UpdateScores(features, scores, display, likeID, alpha):
 
     # Move data to the GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Convert lists of numpy arrays to single numpy arrays
+    features = np.array(features)
+    scores = np.array(scores)
+
+    # Then, convert numpy arrays to tensors
     features = torch.tensor(features, device=device)
     scores = torch.tensor(scores, device=device)
 
@@ -369,7 +381,7 @@ def feedback_loop(request):
             features.append(image_features)
 
     print("Score path definition")
-    scores_path = os.path.join(features_dir, 'scores.npy')
+    scores_path = 'scores.npy'
 
     # Load the scores from the previous session if they exist
     if os.path.exists(scores_path):
@@ -405,7 +417,7 @@ def feedback_loop(request):
     filenames, scores, scores_pct = zip(*results)
 
     # Generate the correct paths for each filename
-    filenames = [os.path.join(folder_path, filename) for filename in filenames]
+    filenames = [os.path.join(settings.MEDIA_URL, filename) for filename in filenames]
     # Combine the filenames and scores again
     filename_score_zip = list(zip(filenames, scores_pct))
 
@@ -420,17 +432,14 @@ def feedback_loop(request):
     print("Done with Bayesian update.")
     return render(request, 'home.html', context)
 
-# TODO Implement score reset button.
-from django.shortcuts import render, redirect
 def reset_scores(request):
     print("Resetting scores.npy")
     features_dir = "Features"
-    scores_path = os.path.join(features_dir, 'scores.npy')
+    scores_path = 'scores.npy'
     # Check if the file exists
     if os.path.exists(scores_path):
         # Delete the file
         os.remove(scores_path)
-    # TODO If have time left over fix redirecting issue.
     return redirect('home')
 
 def show_surrounding():
@@ -495,7 +504,7 @@ def search_lion(request):
         similarities = (image_features @ text_features.T).squeeze(0)
 
         for query, similarity in zip(text_queries, similarities):
-            image_path = os.path.join(folder_path, image_file)
+            image_path = os.path.join(settings.MEDIA_URL, image_file)
             similarity_pct = "{:.3f}".format(similarity * 100) + "%"
 
             # Store the results

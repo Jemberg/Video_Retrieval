@@ -81,7 +81,6 @@
 
         <div class="navbar-nav mx-auto">
             <div class="myFormattedText">
-{#                 TODO Only format "Text Query" and "Last Selected Image" instead of entire text to make visibility easier."#}
                 {% if query %}
 {#                    Query: <span>{{ query }}</span>#}
                     Image: <span id="lastSelected"></span>
@@ -91,17 +90,17 @@
             </div>
         </div>
 
-        <form method="post" action="{% url 'search_clip' %}" class="d-flex form-inline">
+        <form id="clipSearchForm" method="post" action="{% url 'search_clip' %}" class="d-flex form-inline">
             {% csrf_token %}
             <input type="hidden" id="likeID" name="likeID" value="">
-            <input name="query" id="searchClipInput" class="form-control mr-sm-2 mx-1" type="text" placeholder="Text Search" aria-label="Text Search" value="{{ query }}">
+            <input name="query" id="searchClipInput" class="form-control mr-sm-2 mx-1" type="text" placeholder="Text Search" aria-label="Text Search" value="{{ query }}" oninput="textInput(query)">
             <button type="submit" id="searchClipButton" class="btn btn-success mr-1 my-sm-0">Text Search</button>
         </form>
 
         <form id="combinedForm" method="post" action="{% url 'combined_clip' %}">
             {% csrf_token %}
-            <input type="hidden" id="searchClipInput" name="searchClipInput" value="">
-            <input type="hidden" id="likeID" name="likeID" value="">
+            <input type="hidden" id="searchClipInput" name="searchClipInput" value={{ searchClipInput }}>
+            <input type="hidden" id="likeID" name="likeID" value={{ likeID }}>
             <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search</button>
         </form>
 
@@ -170,6 +169,12 @@
         // Update the likeID value in the form
         document.getElementById('searchImageForm').elements['likeID'].value = imageId;
         document.getElementById('feedbackForm').elements['likeID'].value = imageId;
+        document.getElementById('combinedForm').elements['likeID'].value = imageId;
+    }
+
+    function textInput(query) {
+        console.log(query)
+        document.getElementById('combinedForm').elements['searchClipInput'].value = document.getElementById('clipSearchForm').elements['searchClipInput'].value;
     }
 
     document.getElementById('combinedClipButton').onclick = function() {
@@ -189,7 +194,7 @@
             return false;  // This will prevent the form from being submitted
         } else {
             $.get('/search_clip/', function(data) {
-                console.log(data.result);
+                {#console.log(data.result);#}
             });
         }
     };
@@ -198,7 +203,7 @@
         console.log("Sending selected image");
         if (true) {
             $.get('/send_result/', function(data) {
-                console.log(data.result);
+                {#console.log(data.result);#}
             });
         }
     };
@@ -207,7 +212,7 @@
         let selectedImage = document.getElementById('lastSelected');
         if (selectedImage) {
             $.get('/find_similar/' + selectedImage + '/', function(data) {
-                console.log(data.result);
+                {#console.log(data.result);#}
             });
         }
     };
@@ -224,7 +229,7 @@
             return false;  // This will prevent the form from being submitted
         } else {
             $.get('/combined_clip/', function(data) {
-                console.log(data.result);
+                {#console.log(data.result);#}
             });
         }
     };
