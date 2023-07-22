@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Retrieval</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #343a40;
+            color: white;
+        }
+        .navbar {
+            background-color: #343a40;
+        }
+        footer {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+        <div class="">
+            <a href="/" class="btn btn-primary">Home</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container text-center">
+    <h1 class="my-5 text-light">Response has been successfully sent to the server, here are the details:</h1>
+    <h2 class="font-weight-bold">Team name: {{ team_name }}</h2>
+    <h2 class="font-weight-bold">Image sent: {{ item_number }}</h2>
+</div>
+
+<footer class="footer mt-auto py-2 bg-dark">
+    <div class="container text-center">
+        <span class="text-light">Created by <a href="https://martinjemberg.com/" class="text-warning">Mārtiņš Dāvis Jembergs</a></span>
+    </div>
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+</body>
+</html>

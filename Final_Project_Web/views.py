@@ -1,10 +1,3 @@
-import os
-import time
-
-import clip
-import cv2
-import open_clip
-import requests
 from PIL import Image
 from django.conf import settings
 from django.http import JsonResponse
@@ -18,6 +11,10 @@ from scipy.spatial import distance
 from sklearn_som.som import SOM
 from django.conf import settings
 from django.core.paginator import Paginator
+from scipy.spatial import distance
+from django.core.paginator import Paginator
+from django.shortcuts import render
+from django.conf import settings
 
 import torch
 import numpy as np
@@ -25,6 +22,17 @@ import cv2
 import numpy as np
 import pickle
 import os
+import os
+import cv2
+import numpy as np
+import pickle
+import os
+import time
+import re
+import clip
+import cv2
+import open_clip
+import requests
 
 folder_path = settings.MEDIA_ROOT
 
@@ -105,15 +113,43 @@ def home(request):
     return render(request, 'home.html', context)
 
 def send_result(request):
-    print("Sent response to server.")
-    # key_i = (image_name[-9:])[:5]
-    # TODO: Edit object to include selected image.
-    my_obj = {'team': "Martin", 'item': "21354"}
+    image_id = request.POST.get('likeID')
+    print("Preparing to send response to server. Image: ", image_id)
+
+    if image_id is None:
+        return HttpResponse("Image ID not found.", status=404)
+
+    # Remove the last 4 characters from image_id
+    image_id = image_id[:-4]
+
+    my_obj = {'team': "Martin", 'item': image_id}
+
     # Query that worked: https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php?team=Martin&item=24563
     # Query to check on: https://siret.ms.mff.cuni.cz/lokoc/VBSEval/eval.php
     response = requests.get(url="https://siret.ms.mff.cuni.cz/lokoc/VBSEval/EndPoint.php", params=my_obj, verify=False)
-    print(response)
-    return JsonResponse({'result': response.text})
+
+    result = parse_response(response.text)
+    context = {}
+    if result:
+        team_name, item_number = result
+        print(f"Team name: {team_name}, item number: {item_number}")
+        context = {'team_name': team_name, "item_number": item_number}
+    else:
+        print("Failed to parse response.")
+
+    print("Returning results.")
+    return render(request, 'response.html', context)
+
+def parse_response(response_text):
+    # Use a regular expression to find the team name and item number
+    # This assumes the team name and item number are always in the same position
+    match = re.search(r'team name: (.*), submitted item: (.*)', response_text)
+    if match:
+        team_name = match.group(1)
+        item_number = match.group(2)
+        return team_name, item_number
+    else:
+        return None
 
 def find_similar(request):
     image_id = request.POST.get('likeID')
@@ -182,17 +218,6 @@ def find_similar(request):
     print("Returning results.")
     return render(request, 'home.html', context)
 
-# TODO find_similar_histogram needs to be properly implemented, requires button in front-end as well.
-
-import os
-import cv2
-import numpy as np
-import pickle
-from scipy.spatial import distance
-from django.core.paginator import Paginator
-from django.shortcuts import render
-from django.conf import settings
-
 def calculate_histogram(image_file, image_dir, bins):
     # Load the image
     image = cv2.imread(os.path.join(image_dir, image_file))
@@ -209,9 +234,9 @@ def search_histogram(request):
     query_image_path = request.POST.get('likeID')
     print("Query image path: ", query_image_path)
     if query_image_path is not None:
-        request.session['query'] = query_image_path
+        request.session['likeID'] = query_image_path
     else:
-        query_image_path = request.session.get('query', '')
+        query_image_path = request.session.get('likeID', '')
 
     query_image_path = os.path.join(os.path.abspath("Images"), query_image_path)
     print("Absolute query image path: ", query_image_path)
@@ -229,7 +254,7 @@ def search_histogram(request):
     image_dir = 'Images'
     results = []
 
-    histograms_path = os.path.join(image_dir, 'histograms.pickle')
+    histograms_path = 'histograms.pkl'
 
     if os.path.exists(histograms_path):
         # Load histograms from file
