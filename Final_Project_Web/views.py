@@ -300,8 +300,9 @@ def search_histogram(request):
     return render(request, 'home.html', context)
 
 def combined_clip(request):
-    query = request.POST.get('searchClipInput')
+    query = request.POST.get('query')
     image_id = request.POST.get('likeID')
+    print("Text Query:", query, ", Image Query: ", image_id)
 
     if query is not None:
         # Store the query in the session
@@ -348,8 +349,6 @@ def combined_clip(request):
         features_path = os.path.join(features_dir, image_id + '.pt')
         if os.path.exists(features_path):
             image_features = torch.load(features_path)
-            print(f"image_features shape: {image_features.shape}")
-            print(f"text_features shape: {text_features.shape}")
             text_image_similarity = (image_features * text_features).sum(dim=-1)
 
     results = []

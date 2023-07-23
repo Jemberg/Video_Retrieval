@@ -103,7 +103,7 @@
 
         <form id="combinedForm" method="post" action="{% url 'combined_clip' %}">
             {% csrf_token %}
-            <input type="hidden" id="searchClipInput" name="searchClipInput" value={{ searchClipInput }}>
+            <input type="hidden" id="searchClipInput" name="query" value={{ searchClipInput }}>
             <input type="hidden" id="likeID" name="likeID" value={{ likeID }}>
             <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search</button>
         </form>
