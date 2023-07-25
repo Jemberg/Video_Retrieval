@@ -46,7 +46,6 @@ model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrai
 tokenizer = open_clip.get_tokenizer('ViT-B-32')
 print("Loading done.")
 
-# TODO Reactivate caching for production build.
 # @cache_page(60 * 15)
 def home(request):
     # Directory of features
@@ -309,7 +308,7 @@ def combined_clip(request):
         request.session['query'] = query
     else:
         # Fetch the query from the session
-        query = request.session.get('query', None)
+        query = request.session.get('query')
 
     if image_id is not None:
         # Store the image_id in the session
@@ -325,10 +324,7 @@ def combined_clip(request):
     similarityExcl = []
 
     print("Tokenizing text.")
-    # Split the query string on commas to get a list of queries
-    text_queries = [q.strip() for q in query.split(',')]
-    # Join the queries with the '[SEP]' token
-    text_query = ' [SEP] '.join(text_queries)
+    text_query = query.strip()
     print("Query: ", text_query)
     text = tokenizer(text_query)
 
@@ -379,13 +375,12 @@ def combined_clip(request):
         if text_image_similarity is not None:
             similarities += text_image_similarity
 
-        for query, similarity in zip(text_queries, similarities):
-            # Create the image URL relative to the MEDIA_URL
-            image_path = os.path.join(settings.MEDIA_URL, image_file)
-            similarity_pct = "{:.3f}".format(similarity * 100) + "%"
+        # Create the image URL relative to the MEDIA_URL
+        image_path = os.path.join(settings.MEDIA_URL, image_file)
+        similarity_pct = "{:.3f}".format(similarities.item() * 100) + "%"
 
-            # Store the results
-            results.append((image_path, similarity.item(), similarity_pct))
+        # Store the results
+        results.append((image_path, similarities.item(), similarity_pct))
 
     # Sort the results by similarity in descending order
     results.sort(key=lambda x: x[1], reverse=True)
@@ -396,7 +391,7 @@ def combined_clip(request):
     filename_similarity_zip = list(zip(filenames, similarityExcl))
 
     # Pagination
-    paginator = Paginator(filename_similarity_zip, imagesPerPage) # Show 100 images per page
+    paginator = Paginator(filename_similarity_zip, imagesPerPage)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     page_amount = paginator.num_pages
@@ -410,17 +405,6 @@ def L2S(feature1, feature2):
 
 def UpdateScores(features, scores, display, likeID, alpha):
     start_time = time.time()
-
-    # Move data to the GPU
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # Convert lists of numpy arrays to single numpy arrays
-    features = np.array(features)
-    scores = np.array(scores)
-
-    # Then, convert numpy arrays to tensors
-    features = torch.tensor(features, device=device)
-    scores = torch.tensor(scores, device=device)
 
     # Compute the squared L2 norm between the liked feature and all other features
     diff = features - features[likeID]
@@ -440,19 +424,18 @@ def UpdateScores(features, scores, display, likeID, alpha):
     # Update the scores
     scores = scores * PF / (NF + 1e-9)  # add a small constant to avoid division by zero
 
-    # Move scores back to the CPU and convert to numpy
-    scores = scores.cpu().numpy()
-
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"The function took {execution_time} seconds to execute.")
 
     return scores
 
+
 def feedback_loop(request):
     # Directory of features
     image_dir = 'Images'
     features_dir = 'Features'
+
     # Fetch the ID of the liked image from the request
     likeID = request.POST.get('likeID')[:-4]
     print("(Feedback Loop): Image ID, ", likeID)
@@ -469,17 +452,26 @@ def feedback_loop(request):
         features_path = os.path.join(features_dir, image_file + '.pt')
         if os.path.exists(features_path):
             # Load the feature vector and add it to the list
-            image_features = torch.load(features_path).numpy().squeeze()
+            image_features = torch.load(features_path).cpu().numpy().squeeze()
             features.append(image_features)
 
     print("Score path definition")
-    scores_path = 'scores.npy'
 
-    # Load the scores from the previous session if they exist
-    if os.path.exists(scores_path):
-        scores = np.load(scores_path)
+    # Load the scores from the session if they exist
+    if 'scores' in request.session:
+        scores = np.array(request.session['scores'])
+    # If the scores aren't found in the session, initialize them to ones
     else:
         scores = np.ones(len(features))
+
+    # Convert lists of numpy arrays to single numpy arrays
+    features = np.array(features)
+    scores = np.array(scores)
+
+    # Move data to the GPU and convert numpy arrays to tensors
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    features = torch.tensor(features, device=device)
+    scores = torch.tensor(scores, device=device)
 
     display = np.arange(len(features))
     alpha = 0.5
@@ -489,14 +481,17 @@ def feedback_loop(request):
 
     print("Normalizing scores")
     # Normalizing score
-    scores = scores / np.sum(scores)
+    scores = scores / torch.sum(scores)
+
+    # Move scores back to the CPU and convert to numpy
+    scores_np = scores.cpu().numpy()
 
     print("Saving old scores")
-    # Save the updated scores for the next session
-    np.save(scores_path, scores)
+    # Save the updated scores for the next session in the session
+    request.session['scores'] = scores_np.tolist()
 
     # Convert the scores to percentages
-    scores_pct = ["{:.3f}%".format(score * 100) for score in scores]
+    scores_pct = ["{:.3f}%".format(score * 100) for score in scores_np]
 
     # Combine the filenames and scores
     results = list(zip([str(i).zfill(5) + '.jpg' for i in range(len(features))], scores, scores_pct))
@@ -524,14 +519,15 @@ def feedback_loop(request):
     return render(request, 'home.html', context)
 
 def reset_scores(request):
-    print("Resetting scores.npy")
-    features_dir = "Features"
-    scores_path = 'scores.npy'
-    # Check if the file exists
-    if os.path.exists(scores_path):
-        # Delete the file
-        os.remove(scores_path)
+    print("Resetting scores in session.")
+    print(request.session.keys())  # Print all keys in the session
+    if 'scores' in request.session:
+        print("Score reset successfully.")
+        del request.session['scores']
+    else:
+        print("'scores' not found in session.")
     return redirect('home')
+
 
 def show_surrounding(request):
     image_id = request.POST.get('likeID')
@@ -592,10 +588,7 @@ def search_lion(request):
     similarityExcl = []
 
     print("Tokenizing text.")
-    # Split the query string on commas to get a list of queries
-    text_queries = [q.strip() for q in query.split(',')]
-    # Join the queries with the '[SEP]' token
-    text_query = ' [SEP] '.join(text_queries)
+    text_query = query.strip()
     print("Query: ", text_query)
     text = tokenizer(text_query)
 
@@ -636,12 +629,11 @@ def search_lion(request):
         # Calculate the dot product (similarity) between the text and image embeddings
         similarities = (image_features @ text_features.T).squeeze(0)
 
-        for query, similarity in zip(text_queries, similarities):
-            image_path = os.path.join(settings.MEDIA_URL, image_file)
-            similarity_pct = "{:.3f}".format(similarity * 100) + "%"
+        image_path = os.path.join(settings.MEDIA_URL, image_file)
+        similarity_pct = "{:.3f}".format(similarities.item() * 100) + "%"
 
-            # Store the results
-            results.append((image_path, similarity.item(), similarity_pct))
+        # Store the results
+        results.append((image_path, similarities.item(), similarity_pct))
 
     # Sort the results by similarity in descending order
     results.sort(key=lambda x: x[1], reverse=True)

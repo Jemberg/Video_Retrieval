@@ -26,9 +26,9 @@ SECRET_KEY = 'django-insecure-z!8dvck*888p^^+rqbq*h7n!6z-otx+bwrcp(x-py(*z5ds2@q
 DEBUG = True
 
 # Has to just be bare domain.
-ALLOWED_HOSTS = ['vr.jemberg.com', "127.0.0.1"]
+ALLOWED_HOSTS = ['video.jemberg.com', "127.0.0.1"]
 # Must start with HTTPS or HTTP, has to have scheme in front.
-CSRF_TRUSTED_ORIGINS = ['https://vr.jemberg.com', "http://127.0.0.1"]
+CSRF_TRUSTED_ORIGINS = ['https://video.jemberg.com', "http://127.0.0.1"]
 # Meant for using CDN cache for image retrieval.
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

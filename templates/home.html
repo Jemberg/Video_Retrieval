@@ -203,6 +203,7 @@
     };
 
     document.getElementById('combinedClipButton').onclick = function() {
+        document.getElementById('combinedForm').elements['searchClipInput'].value = document.getElementById('clipSearchForm').elements['searchClipInput'].value;
         const input = document.getElementById('searchClipInput');
         const imageInput = document.getElementById('likeID').value;
 
