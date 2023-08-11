@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # TODO: Enter personal secret key.
-SECRET_KEY = ''
+SECRET_KEY = 'django-insecure-z!8dvck*888p^^+rqbq*h7n!6z-otx+bwrcp(x-py(*z5ds2@q'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Final_Project_Web',
+    'Video_Retrieval_Django',
 ]
 
 MIDDLEWARE = [
@@ -57,7 +57,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'Final_Project_Web.urls'
+ROOT_URLCONF = 'Video_Retrieval_Django.urls'
 
 TEMPLATES = [
     {
@@ -76,7 +76,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'Final_Project_Web.wsgi.application'
+WSGI_APPLICATION = 'Video_Retrieval_Django.wsgi.application'
 
 
 # Database

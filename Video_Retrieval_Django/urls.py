@@ -1,5 +1,5 @@
 from django.urls import path
-from Final_Project_Web import views
+from Video_Retrieval_Django import views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
