@@ -38,6 +38,7 @@ For Windows, use:
 4. Install the dependencies
 The requirements.txt file in the root of the repository contains all the necessary dependencies for the project. Install these using the following command:
 `pip install -r requirements.txt`
-5. Run the server
+5. Enter SECRET_KEY, ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS in settings.py. Do not forget to also put your dataset in a folder named "Images" inside of the root path of the project.
+6. Run the server
 Now, you should be all set! You can start the Django development server using the following command:
 `python manage.py runserver`

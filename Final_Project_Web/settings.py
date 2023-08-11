@@ -20,15 +20,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-z!8dvck*888p^^+rqbq*h7n!6z-otx+bwrcp(x-py(*z5ds2@q'
+# TODO: Enter personal secret key.
+SECRET_KEY = ''
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 # Has to just be bare domain.
-ALLOWED_HOSTS = ['video.jemberg.com', "127.0.0.1"]
+# TODO Enter allowed hosts, just the domain, for example video.jemberg.com.
+ALLOWED_HOSTS = ["127.0.0.1"]
 # Must start with HTTPS or HTTP, has to have scheme in front.
-CSRF_TRUSTED_ORIGINS = ['https://video.jemberg.com', "http://127.0.0.1"]
+# TODO Enter trusted origins, for example https://video.jemberg.com.
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1"]
 # Meant for using CDN cache for image retrieval.
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
