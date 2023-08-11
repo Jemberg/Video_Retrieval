@@ -2,6 +2,9 @@
 
 This is a web application written in Python with Django meant for the video retrieval course done in University of Konstanz in the SS of 2023. This application was designed for the purpose of running on a machine remotely and can be accessed via web hosting or via a VPN by connecting to the host machine.
 
+
+![Showcase](https://media.humbleabo.de/DIsa8/CUlevEKi18.jpg/raw)
+
 ## Key features:
 - Optimized UI for quickly finding the necessary result in the multimedia database, as well as user-error prevention.
 - Ability to directly submit solution to the API with a response view.
