@@ -19,12 +19,24 @@
         }
         .image-container {
             position: relative;
-            text-align: center;
-            color: white;
+            padding: 2px;
         }
 
-        .image-container img {
+        .square {
             width: 100%;
+            padding-bottom: 100%;
+            position: relative;
+        }
+
+        .square img {
+            object-fit: cover;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .img-fluid {
+            max-width: 100%;
             height: auto;
         }
 
@@ -56,19 +68,19 @@
         <form id="showSurroundingForm" method="post" action="{% url 'show_surrounding' %}">
             {% csrf_token %}
             <input type="hidden" id="likeID" name="likeID" value="">
-            <button type="submit" id="showSurroundingButton" class="btn btn-primary ml-2 my-sm-0">Show Surrounding Images</button>
+            <button type="submit" id="showSurroundingButton" class="btn btn-primary ml-2 my-sm-0">Show Surrounding</button>
         </form>
 
         <form id="searchImageHistogramForm" method="post" action="{% url 'search_histogram' %}">
             {% csrf_token %}
             <input type="hidden" id="likeID" name="likeID" value="">
-            <button type="submit" id="searchImageButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (Histogram)</button>
+            <button type="submit" id="searchImageButton" class="btn btn-primary ml-2 my-sm-0">Show by Histogram</button>
         </form>
 
         <form id="searchImageForm" method="post" action="{% url 'find_similar' %}">
             {% csrf_token %}
             <input type="hidden" id="likeID" name="likeID" value={{ likeID }}>
-            <button type="submit" id="searchImageButton" class="btn btn-primary ml-2 my-sm-0">Find Similar Images (CLIP)</button>
+            <button type="submit" id="searchImageButton" class="btn btn-primary ml-2 my-sm-0">Show by CLIP</button>
         </form>
 
         <form id="feedbackForm" method="post" action="{% url 'feedback_loop' %}">
@@ -100,12 +112,12 @@
             <button type="submit" id="searchClipButton" class="btn btn-success mr-2 my-sm-0">Text Search (CLIP)</button>
         </form>
 
-        <form id="combinedForm" method="post" action="{% url 'combined_clip' %}">
-            {% csrf_token %}
-            <input type="hidden" id="searchClipInput" name="query" value={{ searchClipInput }}>
-            <input type="hidden" id="likeID" name="likeID" value={{ likeID }}>
-            <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search</button>
-        </form>
+{#        <form id="combinedForm" method="post" action="{% url 'combined_clip' %}">#}
+{#            {% csrf_token %}#}
+{#            <input type="hidden" id="searchClipInput" name="query" value={{ searchClipInput }}>#}
+{#            <input type="hidden" id="likeID" name="likeID" value={{ likeID }}>#}
+{#            <button type="submit" id="combinedClipButton" class="btn btn-success mr-1 my-sm-0">Combined Search</button>#}
+{#        </form>#}
 
         <form id="sendImageForm" method="post" action="{% url 'send_result' %}">
             {% csrf_token %}
@@ -117,8 +129,10 @@
 <div class="container-fluid">
     <div class="row justify-content-start" id="imageGrid">
         {% for filename, similarity in filenames %}
-            <div class="image-container">
-                <img src="{{ filename }}" id="{{ filename }}" style="width: 166px; height: 166px; object-fit: cover;" class="d-block my-1 mx-1" onclick="selectImage('{{ filename }}')" alt="Image">
+            <div class="col-md-1 image-container">
+                <div class="square">
+                    <img src="{{ filename }}" id="{{ filename }}" class="img-fluid d-block mx-auto" onclick="selectImage('{{ filename }}')" alt="Image">
+                </div>
                 {% if similarity %}
                     <div class="overlay-text">{{ similarity }}</div>
                 {% endif %}

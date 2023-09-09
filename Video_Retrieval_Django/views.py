@@ -150,6 +150,22 @@ def parse_response(response_text):
     else:
         return None
 
+import os
+import torch
+from django.conf import settings
+from django.core.paginator import Paginator
+from django.http import HttpResponse
+from django.shortcuts import render
+
+def generate_image_features(image_path):
+    # Load the image from the image_path
+    image = load_image(image_path)  # Implement this function to load your image
+
+    # Extract features from the image
+    features = extract_features(image)  # Implement this function to extract features
+
+    return features
+
 def find_similar(request):
     image_id = request.POST.get('likeID')
 
@@ -173,9 +189,19 @@ def find_similar(request):
     image_features_path = os.path.join(features_dir, image_id + '.pt')
 
     if not os.path.exists(image_features_path):
-        return HttpResponse("Image features file not found.", status=404)
+        image_path = os.path.join(image_dir, image_id)
+        image = Image.open(image_path)
+        # convert image to grayscale
+        gray_image = image.convert('L')
+        # resize image to 128x128
+        resized_image = gray_image.resize((128, 128))
+        # convert image to numpy array and flatten
+        image_features = torch.tensor(np.array(resized_image).flatten())
+        image_features = image_features.float() / torch.norm(image_features.float(), 2)
 
-    image_features = torch.load(image_features_path)
+        torch.save(image_features, image_features_path)
+    else:
+        image_features = torch.load(image_features_path)
 
     results = []
 
@@ -188,16 +214,28 @@ def find_similar(request):
         if os.path.exists(features_path):
             # Load the image features from disk
             other_image_features = torch.load(features_path)
+        else:
+            image_path = os.path.join(image_dir, image_file)
+            image = Image.open(image_path)
+            # convert image to grayscale
+            gray_image = image.convert('L')
+            # resize image to 128x128
+            resized_image = gray_image.resize((128, 128))
+            # convert image to numpy array and flatten
+            other_image_features = torch.tensor(np.array(resized_image).flatten())
+            other_image_features = other_image_features.float() / torch.norm(other_image_features.float(), 2)
 
-            # Calculate the dot product (similarity) between the text and image embeddings
-            similarity = (image_features * other_image_features).sum()
+            torch.save(other_image_features, features_path)
 
-            # Create the image URL relative to the MEDIA_URL
-            image_url = os.path.join(settings.MEDIA_URL, image_file)
-            similarity_pct = "{:.3f}".format(similarity * 100) + "%"
+        # Calculate the dot product (similarity) between the text and image embeddings
+        similarity = (image_features * other_image_features).sum()
 
-            # Store the results
-            results.append((image_url, similarity.item(), similarity_pct))
+        # Create the image URL relative to the MEDIA_URL
+        image_url = os.path.join(settings.MEDIA_URL, image_file)
+        similarity_pct = "{:.3f}".format(similarity * 100) + "%"
+
+        # Store the results
+        results.append((image_url, similarity.item(), similarity_pct))
 
     # Sort the results by similarity in descending order
     results.sort(key=lambda x: x[1], reverse=True)
@@ -216,6 +254,7 @@ def find_similar(request):
     context = {'filenames': page_obj, 'total_pages': page_amount, 'image_id': image_id}
     print("Returning results.")
     return render(request, 'home.html', context)
+
 
 def calculate_histogram(image_file, image_dir, bins):
     # Load the image

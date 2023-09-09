@@ -1,6 +1,6 @@
 Django
 Pillow
-open-clip
+open-clip-torch
 scipy
 django-paginator
 torch
@@ -9,3 +9,4 @@ opencv-python
 pickle5
 requests
 clip-anytorch
+sklearn_som
